@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My account | Glitz &amp; Glam</title>
+<link rel="icon" href="images/logo.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body class="admin-page">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.9 13A9 9 0 0 1 11 3.1 9 9 0 1 0 20.9 13Z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></symbol>
+</svg>
+<nav>
+  <div class="wrap">
+    <a href="index.html" class="brand"><img src="images/logo.jpg" alt="Glitz &amp; Glam logo">Glitz &amp; Glam</a>
+    <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark mode" title="Switch to dark mode"><svg class="i"><use href="#i-moon"/></svg><span data-theme-label>Dark</span></button>
+    <a href="index.html#catalogue">Back to catalogue</a>
+  </div>
+</nav>
+<main class="wrap admin-content">
+  <header class="title">
+    <small>Customer account</small>
+    <h1>My account</h1>
+    <p>Sign in to send a catalogue request and keep track of your requests.</p>
+  </header>
+
+  <section id="authPanel" class="admin-section account-panel">
+    <div id="authChoices" class="account-actions">
+      <button id="showSignIn" class="btn btn-secondary" type="button">Sign in</button>
+      <button id="showSignUp" class="btn" type="button">Create account</button>
+    </div>
+    <form id="signInForm" class="admin-form">
+      <h2>Welcome back</h2>
+      <label for="signInEmail">Email</label>
+      <input id="signInEmail" type="email" autocomplete="username" required>
+      <label for="signInPassword">Password</label>
+      <input id="signInPassword" type="password" autocomplete="current-password" required>
+      <button class="btn" type="submit">Sign in</button>
+    </form>
+    <form id="signUpForm" class="admin-form" hidden>
+      <h2>Create your account</h2>
+      <label for="signUpEmail">Email</label>
+      <input id="signUpEmail" type="email" autocomplete="email" required>
+      <label for="signUpPassword">Password (at least 8 characters)</label>
+      <input id="signUpPassword" type="password" autocomplete="new-password" minlength="8" required>
+      <button class="btn" type="submit">Create account</button>
+    </form>
+    <form id="resetForm" class="admin-form" hidden>
+      <h2>Reset your password</h2>
+      <label for="resetEmail">Account email</label>
+      <input id="resetEmail" type="email" autocomplete="email" required>
+      <button class="btn" type="submit">Send reset link</button>
+    </form>
+    <div class="account-actions">
+      <button id="showReset" class="text-button" type="button">Forgot password?</button>
+      <button id="cancelReset" class="text-button" type="button" hidden>Return to sign in</button>
+    </div>
+    <p id="authMessage" class="form-message" aria-live="polite" role="status"></p>
+  </section>
+
+  <section id="accountPanel" class="admin-section account-panel" hidden>
+    <div class="admin-section-heading">
+      <div><small id="accountEmail"></small><h2>Your requests</h2></div>
+      <button id="signOutButton" class="btn btn-secondary" type="button">Sign out</button>
+    </div>
+    <p id="accountMessage" class="form-message" aria-live="polite" role="status"></p>
+    <form id="newPasswordForm" hidden>
+      <h3>Choose a new password</h3>
+      <label for="newPassword">New password (at least 8 characters)</label>
+      <input id="newPassword" type="password" autocomplete="new-password" minlength="8" required>
+      <label for="confirmPassword">Confirm new password</label>
+      <input id="confirmPassword" type="password" autocomplete="new-password" minlength="8" required>
+      <button class="btn" type="submit">Update password</button>
+    </form>
+    <section id="request" class="account-panel">
+      <h3>Send a catalogue request</h3>
+      <p class="privacy-note">This is a request, not a confirmed appointment. The studio will contact you to confirm availability and final pricing. No payment is taken here.</p>
+      <div id="requestSelection" class="cart-items"></div>
+      <form id="requestForm">
+        <label for="contactName">Your name</label>
+        <input id="contactName" autocomplete="name" maxlength="100" required>
+        <label for="contactPhone">Phone number</label>
+        <input id="contactPhone" type="tel" autocomplete="tel" maxlength="30" pattern="[+0-9 ()-]{7,30}" required>
+        <label for="customization">Anything else we should know? (optional)</label>
+        <textarea id="customization" rows="3" maxlength="1000"></textarea>
+        <label class="consent-label"><input id="callRequested" type="checkbox"> Please call me about this request.</label>
+        <button id="submitRequest" class="btn" type="submit">Send request</button>
+      </form>
+    </section>
+    <section class="account-panel">
+      <h3>Request history</h3>
+      <div id="requestHistory" class="request-list"></div>
+    </section>
+  </section>
+</main>
+<footer>&copy; <span id="year"></span> Glitz &amp; Glam by Doesitbest</footer>
+<script type="module" src="js/account.js"></script>
+<script src="js/theme.js" defer></script>
+</body>
+</html>

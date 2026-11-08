@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Admin sign in | Glitz &amp; Glam</title>
+<link rel="icon" href="images/logo.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body class="admin-page">
+<nav>
+  <div class="wrap">
+    <a href="index.html" class="brand"><img src="images/logo.jpg" alt="Glitz &amp; Glam logo">Glitz &amp; Glam</a>
+    <a href="index.html" class="btn">View website</a>
+  </div>
+</nav>
+<main class="wrap admin-content">
+  <header class="title">
+    <small>Studio management</small>
+    <h1>Admin sign in</h1>
+    <p>Sign in with an authorized studio account.</p>
+  </header>
+  <section id="loginPanel" class="admin-section" aria-labelledby="login-title">
+    <h2 id="login-title">Welcome back</h2>
+    <form id="loginForm" class="admin-form">
+      <label for="adminEmail">Email</label>
+      <input id="adminEmail" type="email" autocomplete="username" required>
+      <label for="adminPassword">Password</label>
+      <input id="adminPassword" type="password" autocomplete="current-password" required>
+      <button class="btn" type="submit">Sign in</button>
+      <p id="loginMessage" class="form-message" aria-live="polite" role="status"></p>
+    </form>
+  </section>
+  <section id="dashboardPanel" class="admin-section" hidden>
+    <div class="admin-section-heading">
+      <div><small id="adminRole"></small><h2>Studio dashboard</h2></div>
+      <button id="signOutButton" class="btn btn-secondary" type="button">Sign out</button>
+    </div>
+    <p id="dashboardMessage" class="form-message" aria-live="polite" role="status"></p>
+
+    <div class="analytics-grid">
+      <article class="metric-card"><span>Website visits</span><strong id="dashboardVisits">0</strong></article>
+      <article class="metric-card"><span>Unique days</span><strong id="dashboardUniqueDays">0</strong></article>
+      <article class="metric-card"><span>Booking leads</span><strong id="dashboardBookings">0</strong></article>
+      <article class="metric-card"><span>Review submissions</span><strong id="dashboardReviews">0</strong></article>
+    </div>
+
+    <div class="analytics-panels" aria-live="polite">
+      <article class="analytics-panel">
+        <h3>Traffic by day</h3>
+        <div id="trafficChart" class="traffic-chart"></div>
+      </article>
+      <article class="analytics-panel">
+        <h3>Top service interest</h3>
+        <ul id="serviceBreakdown" class="mini-list"></ul>
+      </article>
+      <article class="analytics-panel">
+        <h3>Growth plan &amp; budget</h3>
+        <ul id="growthPlan" class="mini-list"></ul>
+      </article>
+    </div>
+
+    <section id="catalogueManagement" class="owner-management" hidden>
+      <div class="divider-heading"><h3>Catalogue management</h3></div>
+      <form id="catalogueForm" class="admin-tool-form">
+        <input id="catalogueItemId" type="hidden">
+        <label>Name<input id="catalogueName" maxlength="100" required></label>
+        <label>Category<input id="catalogueCategory" maxlength="60" required placeholder="e.g. Make-up"></label>
+        <label>Price (R)<input id="cataloguePrice" type="number" min="0" step="0.01" required></label>
+        <label>Display order<input id="catalogueOrder" type="number" step="1" value="0" required></label>
+        <label class="wide">Description<textarea id="catalogueDescription" maxlength="500" rows="3"></textarea></label>
+        <label><span>Visible in public catalogue</span><input id="catalogueActive" type="checkbox" checked></label>
+        <div class="account-actions wide">
+          <button id="saveCatalogueItem" class="btn" type="submit">Add catalogue item</button>
+          <button id="cancelCatalogueEdit" class="btn btn-secondary" type="button" hidden>Cancel edit</button>
+        </div>
+      </form>
+      <div id="catalogueAdminList" class="admin-list"></div>
+    </section>
+
+    <section id="requestManagement" class="owner-management" hidden>
+      <div class="divider-heading"><h3>Customer requests</h3></div>
+      <div id="adminRequests" class="admin-list"></div>
+    </section>
+
+    <div id="moderationPanel">
+      <div class="divider-heading">
+        <h3>Review moderation</h3>
+        <p id="adminRating" class="admin-rating"></p>
+      </div>
+      <div id="adminReviews" class="admin-list"></div>
+    </div>
+    <aside id="developerNotice" class="notice" hidden>
+      Developer access is restricted to technical administration. Reviews, customer requests and client contact details are available to the business owner only.
+    </aside>
+  </section>
+</main>
+<footer>&copy; <span id="year"></span> Glitz &amp; Glam by Doesitbest</footer>
+<script type="module" src="js/admin.js"></script>
+</body>
+</html>
