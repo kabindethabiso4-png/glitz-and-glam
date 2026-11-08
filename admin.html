@@ -11,9 +11,14 @@
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="admin-page">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.9 13A9 9 0 0 1 11 3.1 9 9 0 1 0 20.9 13Z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l-1.42 1.42m11.3-11.3 1.42-1.42"/></symbol>
+</svg>
 <nav>
   <div class="wrap">
     <a href="index.html" class="brand"><img src="images/logo.jpg" alt="Glitz &amp; Glam logo">Glitz &amp; Glam</a>
+    <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark mode" title="Switch to dark mode"><svg class="i"><use href="#i-moon"/></svg><span data-theme-label>Dark</span></button>
     <a href="index.html" class="btn">View website</a>
   </div>
 </nav>
@@ -31,8 +36,27 @@
       <label for="adminPassword">Password</label>
       <input id="adminPassword" type="password" autocomplete="current-password" required>
       <button class="btn" type="submit">Sign in</button>
-      <p id="loginMessage" class="form-message" aria-live="polite" role="status"></p>
     </form>
+    <form id="adminResetForm" class="admin-form" hidden>
+      <h2>Reset admin password</h2>
+      <p class="privacy-note">Enter your authorized admin email. If the account exists, a reset link will be sent.</p>
+      <label for="adminResetEmail">Admin email</label>
+      <input id="adminResetEmail" type="email" autocomplete="email" required>
+      <button class="btn" type="submit">Send reset link</button>
+    </form>
+    <form id="adminNewPasswordForm" class="admin-form" hidden>
+      <h2>Choose a new password</h2>
+      <label for="adminNewPassword">New password (at least 8 characters)</label>
+      <input id="adminNewPassword" type="password" autocomplete="new-password" minlength="8" required>
+      <label for="adminConfirmPassword">Confirm new password</label>
+      <input id="adminConfirmPassword" type="password" autocomplete="new-password" minlength="8" required>
+      <button class="btn" type="submit">Update password</button>
+    </form>
+    <div class="account-actions">
+      <button id="showAdminReset" class="text-button" type="button">Forgot password?</button>
+      <button id="cancelAdminReset" class="text-button" type="button" hidden>Return to sign in</button>
+    </div>
+    <p id="loginMessage" class="form-message" aria-live="polite" role="status"></p>
   </section>
   <section id="dashboardPanel" class="admin-section" hidden>
     <div class="admin-section-heading">
@@ -43,8 +67,11 @@
 
     <div class="analytics-grid">
       <article class="metric-card"><span>Website visits</span><strong id="dashboardVisits">0</strong></article>
-      <article class="metric-card"><span>Unique days</span><strong id="dashboardUniqueDays">0</strong></article>
-      <article class="metric-card"><span>Booking leads</span><strong id="dashboardBookings">0</strong></article>
+      <article class="metric-card"><span>Average visit time</span><strong id="dashboardAvgDuration">0s</strong></article>
+      <article class="metric-card"><span>Uncleared cart exits</span><strong id="dashboardUnclearedCarts">0</strong></article>
+      <article class="metric-card"><span>Booking enquiries</span><strong id="dashboardBookings">0</strong></article>
+      <article class="metric-card"><span>Service requests</span><strong id="dashboardServiceRequests">0</strong></article>
+      <article class="metric-card"><span>Open requests</span><strong id="dashboardOpenRequests">0</strong></article>
       <article class="metric-card"><span>Review submissions</span><strong id="dashboardReviews">0</strong></article>
     </div>
 
@@ -54,16 +81,25 @@
         <div id="trafficChart" class="traffic-chart"></div>
       </article>
       <article class="analytics-panel">
-        <h3>Top service interest</h3>
+        <h3>Popular pages</h3>
+        <ul id="pageBreakdown" class="mini-list"></ul>
+      </article>
+      <article class="analytics-panel">
+        <h3>Catalogue item engagement</h3>
+        <ul id="catalogueItemBreakdown" class="mini-list"></ul>
+      </article>
+      <article class="analytics-panel">
+        <h3>Service interest</h3>
         <ul id="serviceBreakdown" class="mini-list"></ul>
       </article>
       <article class="analytics-panel">
-        <h3>Growth plan &amp; budget</h3>
-        <ul id="growthPlan" class="mini-list"></ul>
+        <h3>Request status</h3>
+        <ul id="requestStatusBreakdown" class="mini-list"></ul>
       </article>
     </div>
+    <p id="analyticsNotice" class="privacy-note">Analytics use anonymous aggregate data. No customer contact details are included.</p>
 
-    <section id="catalogueManagement" class="owner-management" hidden>
+    <section id="catalogueManagement" class="store-management" hidden>
       <div class="divider-heading"><h3>Catalogue management</h3></div>
       <form id="catalogueForm" class="admin-tool-form">
         <input id="catalogueItemId" type="hidden">
@@ -81,9 +117,20 @@
       <div id="catalogueAdminList" class="admin-list"></div>
     </section>
 
-    <section id="requestManagement" class="owner-management" hidden>
+    <section id="requestManagement" class="store-management" hidden>
       <div class="divider-heading"><h3>Customer requests</h3></div>
       <div id="adminRequests" class="admin-list"></div>
+    </section>
+
+    <section id="scheduleManagement" class="store-management" hidden>
+      <div class="divider-heading"><h3>Booked periods</h3></div>
+      <p class="privacy-note">Periods added here are removed from the public appointment availability check. Use local studio time.</p>
+      <form id="scheduleForm" class="admin-tool-form">
+        <label>Starts<input id="blockStart" type="datetime-local" required></label>
+        <label>Ends<input id="blockEnd" type="datetime-local" required></label>
+        <div class="account-actions wide"><button class="btn" type="submit">Block this period</button></div>
+      </form>
+      <div id="scheduleBlocks" class="admin-list"></div>
     </section>
 
     <div id="moderationPanel">
@@ -93,12 +140,13 @@
       </div>
       <div id="adminReviews" class="admin-list"></div>
     </div>
-    <aside id="developerNotice" class="notice" hidden>
-      Developer access is restricted to technical administration. Reviews, customer requests and client contact details are available to the business owner only.
+    <aside id="technicalNotice" class="notice" hidden>
+      Technical admin access is limited to technical oversight and aggregate analytics. Customer requests, schedule management, reviews and client contact details are restricted to the store admin.
     </aside>
   </section>
 </main>
-<footer>&copy; <span id="year"></span> Glitz &amp; Glam by Doesitbest</footer>
+<footer>&copy; <span id="year"></span> Glitz &amp; Glam by Doesitbest <a class="admin-entry" href="privacy.html">Privacy</a></footer>
 <script type="module" src="js/admin.js"></script>
+<script src="js/theme.js" defer></script>
 </body>
 </html>

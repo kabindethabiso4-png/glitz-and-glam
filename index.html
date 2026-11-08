@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Glitz &amp; Glam by Doesitbest | Make-up Artist in Soshanguve</title>
-<meta name="description" content="Glitz &amp; Glam by Doesitbest - make-up artist and hair styling in Soshanguve, Pretoria. Book your appointment today.">
+<meta name="description" content="Glitz &amp; Glam by Doesitbest - make-up artistry, hair styling and appointment requests in Soshanguve, Pretoria.">
 <link rel="icon" href="images/logo.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
@@ -38,11 +38,12 @@
       <li><a href="#catalogue">Catalogue</a></li>
       <li><a href="#reviews">Reviews</a></li>
       <li><a href="#policy">Policy</a></li>
+      <li><a href="privacy.html">Privacy</a></li>
       <li><a href="#book">Book</a></li>
       <li><a href="#contact">Contact</a></li>
       <li><a href="account.html">My account</a></li>
     </ul>
-    <a href="#book" class="btn nav-book">Book Now</a>
+    <a href="#book" class="btn nav-book">Request a Slot</a>
     <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark mode" title="Switch to dark mode"><svg class="i"><use href="#i-moon"/></svg><span data-theme-label>Dark</span></button>
     <button class="burger" id="burger" aria-label="Menu" aria-expanded="false"><svg class="i"><use href="#i-menu"/></svg></button>
   </div>
@@ -59,7 +60,7 @@
     <h1>Where <em>Glitz</em><br>meets Glam</h1>
     <p>Flawless make-up and gorgeous hair styling by Doesitbest. Walk in ready, walk out unforgettable.</p>
     <div class="cta">
-      <a class="btn" href="#book"><svg class="i"><use href="#i-heart"/></svg> Book an Appointment</a>
+      <a class="btn" href="#book"><svg class="i"><use href="#i-heart"/></svg> Request an Appointment</a>
       <a class="btn ghost" href="tel:0655114153"><svg class="i"><use href="#i-phone"/></svg> 065 511 4153</a>
     </div>
   </div>
@@ -114,7 +115,7 @@
 <!-- CATALOGUE -->
 <section id="catalogue">
   <div class="wrap">
-    <div class="title rv"><small>Explore our work</small><h2>Our Catalogue</h2></div>
+    <div class="title rv"><small>Services &amp; estimates</small><h2>Explore the Catalogue</h2><p class="catalogue-intro">Browse our services and build an estimate for your request. The studio will confirm availability and final pricing with you.</p></div>
     <div id="catalogueItems" class="catalogue-groups"></div>
     <section class="cart-panel" aria-labelledby="cartHeading">
       <div class="cart-heading"><h3 id="cartHeading">Your selection</h3><span id="cartCount">0 items</span></div>
@@ -140,7 +141,7 @@
         </div>
         <label for="reviewWhatsApp">WhatsApp number</label>
         <input id="reviewWhatsApp" name="whatsapp" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" pattern="[+0-9 ()-]{7,20}" required placeholder="e.g. 082 123 4567">
-        <p class="privacy-note">Your number is kept private and is only visible to the business owner.</p>
+        <p class="privacy-note">Your number is kept private and is visible only to the store admin.</p>
         <label for="reviewService">What service are you reviewing?</label>
         <select id="reviewService" name="service" required>
           <option value="">Choose a service</option>
@@ -181,9 +182,9 @@
   <div class="wrap">
     <div class="title rv"><small>Good to know</small><h2>Our Policy</h2></div>
     <div class="pol">
-      <div class="rv"><h3>Booking</h3>All appointments require a R100 deposit fee.</div>
-      <div class="rv"><h3>Cancellation</h3>Cancel at least 24 hours before your appointment so we can fill the slot. Cancelling outside the 24-48 hour window without proper communication means a 30% charge of the booked service.</div>
-      <div class="rv"><h3>Pricing</h3>All pricing is subject to change. We will inform all clients of any price change.</div>
+      <div class="rv"><h3>Booking</h3>Your appointment is only confirmed by the studio. Any deposit or payment terms will be communicated directly by an admin.</div>
+      <div class="rv"><h3>Cancellation</h3>Please contact the studio as early as possible if you need to change or cancel an appointment. The admin will explain any applicable terms when confirming your booking.</div>
+      <div class="rv"><h3>Pricing</h3>Catalogue prices are estimates only and may change. The studio will confirm the final price directly with you. No payment is taken on this website.</div>
       <div class="rv"><h3>No Show</h3>We are willing to move things around and accommodate in some circumstances, as long as there is communication. Applies to new and existing clients.</div>
     </div>
   </div>
@@ -192,10 +193,10 @@
 <!-- BOOKING -->
 <section id="book" class="band">
   <div class="wrap">
-    <div class="title rv"><small>Reserve your spot</small><h2>Book an Appointment</h2></div>
+    <div class="title rv"><small>Check availability</small><h2>Request an Appointment</h2></div>
     <div class="book">
       <div class="info rv">
-        <p>Fill in the form and we will confirm your slot on WhatsApp. A R100 deposit secures your booking.</p>
+        <p>Send an appointment request and the studio will confirm availability and final pricing with you. This website does not take payments.</p>
         <p><svg class="i"><use href="#i-pin"/></svg><span>Block F4, Lomagana St, Soshanguve, Pretoria, 0182</span></p>
         <p><svg class="i"><use href="#i-clock"/></svg><span>Open &middot; Closes 10 pm</span></p>
         <p><svg class="i"><use href="#i-phone"/></svg><span>065 511 4153</span></p>
@@ -207,7 +208,9 @@
           <input id="date" type="date" aria-label="Appointment date" required>
         </div>
         <input id="time" type="time" aria-label="Appointment time" required>
+        <p id="availabilityMessage" class="privacy-note" aria-live="polite">Choose a date to check current availability.</p>
         <textarea id="notes" rows="3" aria-label="Additional booking notes" placeholder="Tell us about your look (optional)"></textarea>
+        <label class="consent-label"><input id="bookingPrivacyConsent" type="checkbox" required><span>I agree to send these appointment details to the studio via WhatsApp. See the <a href="privacy.html">privacy notice</a>.</span></label>
         <button class="btn" type="submit"><svg class="i"><use href="#i-chat"/></svg> Request Booking via WhatsApp</button>
         <div id="msg"></div>
       </form>
@@ -227,7 +230,7 @@
   </div>
 </section>
 
-<footer>&copy; <span id="year"></span> Glitz &amp; Glam by Doesitbest &middot; Make-up artist in Soshanguve <a class="admin-entry" href="admin.html">Admin</a></footer>
+<footer>&copy; <span id="year"></span> Glitz &amp; Glam by Doesitbest &middot; Make-up artist in Soshanguve <a class="admin-entry" href="privacy.html">Privacy</a><a class="admin-entry" href="admin.html">Admin</a></footer>
 <a class="wa" href="https://wa.me/27655114153" target="_blank" rel="noopener" aria-label="Chat on WhatsApp"><svg class="i"><use href="#i-chat"/></svg></a>
 
 <script type="module" src="js/script.js"></script>

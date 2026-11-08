@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy notice | Glitz &amp; Glam</title>
+<meta name="description" content="How Glitz &amp; Glam handles personal information and anonymous website analytics under our privacy notice.">
+<link rel="icon" href="images/logo.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body class="admin-page">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.9 13A9 9 0 0 1 11 3.1 9 9 0 1 0 20.9 13Z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></symbol>
+</svg>
+<nav>
+  <div class="wrap">
+    <a href="index.html" class="brand"><img src="images/logo.jpg" alt="Glitz &amp; Glam logo">Glitz &amp; Glam</a>
+    <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark mode" title="Switch to dark mode"><svg class="i"><use href="#i-moon"/></svg><span data-theme-label>Dark</span></button>
+    <a href="index.html">Back to the website</a>
+  </div>
+</nav>
+<main class="wrap admin-content privacy-content">
+  <header class="title">
+    <small>Your information, respected</small>
+    <h1>Privacy notice</h1>
+    <p>Universal privacy principles and our South African POPIA information.</p>
+  </header>
+  <section class="privacy-sections">
+    <article class="admin-section">
+      <h2>Who handles your information</h2>
+      <p>Glitz &amp; Glam by Doesitbest, Soshanguve, Pretoria, is responsible for personal information submitted through this website. For privacy requests, contact the studio on <a href="tel:0655114153">065 511 4153</a> or <a href="https://wa.me/27655114153">WhatsApp</a>.</p>
+    </article>
+    <article class="admin-section">
+      <h2>What we collect and why</h2>
+      <ul>
+        <li>Account email and authentication details are handled by Supabase to provide sign-in, account recovery and request history.</li>
+        <li>When you send a service request, we collect your name, phone number, selected items and any optional notes so the store admin can respond and manage the request.</li>
+        <li>If you use the appointment form, the name, phone number, service, date, time and optional notes you enter are placed in a WhatsApp message addressed to the studio. WhatsApp processes that message under its own terms; this site does not store those booking details in its database.</li>
+        <li>Reviews may include your name, WhatsApp number, rating, comments and optional photos. Your review and approved photos may be displayed publicly with your first name and surname initial. Your WhatsApp number is not shown publicly.</li>
+        <li>Helpful-review voting stores a random browser-generated voter ID and vote choice to remember a visitor's choice and discourage duplicate votes. This ID does not contain your name or contact details.</li>
+        <li>Anonymous analytics are aggregated by calendar day and record only a limited page name, event category, counts, total visit duration, selected-item count, public catalogue item ID and fixed service category. They do not include event-level timestamps, names, email addresses, phone numbers, full URLs, IP addresses, account identifiers or advertising identifiers in the analytics table. Catalogue engagement records count a card visible for at least one second.</li>
+      </ul>
+    </article>
+    <article class="admin-section">
+      <h2>Access and safeguards</h2>
+      <p>Both authorized admin roles can view aggregate analytics only. The store admin can access customer requests and review contact details to manage the business; the technical admin cannot. Customers can access only their own request history. Public pages expose only active catalogue items and approved reviews.</p>
+      <p>Supabase provides authentication, database and file storage services. Access is restricted using database policies. The website never asks for or processes a payment; catalogue totals are estimates and the studio communicates final pricing and any payment arrangements directly.</p>
+      <p>The website also loads fonts and the Supabase client library from third-party providers. Those providers may receive technical connection data under their own privacy terms. Such infrastructure data is not included in the site's anonymous analytics table.</p>
+    </article>
+    <article class="admin-section">
+      <h2>Your choices and POPIA rights</h2>
+      <p>You may ask to access, correct or delete personal information, withdraw consent where processing relies on consent, or raise a privacy concern by contacting the studio. We may need to retain information where the law requires it or where it is needed to resolve a request. Please do not include sensitive information in review text or optional notes.</p>
+      <p>We use information only for the purposes described here, limit access to authorized people, and aim to keep it only as long as needed. You may also contact the Information Regulator of South Africa about a POPIA concern.</p>
+    </article>
+    <article class="admin-section">
+      <h2>Cookies, local storage and analytics</h2>
+      <p>Your browser stores your display-mode preference, catalogue selection and review-voting choice. Aggregate website analytics are stored in the project's Supabase database without an account or cross-page visitor identifier. Analytics are operational estimates, may be incomplete, and are not used to identify visitors.</p>
+    </article>
+    <article class="admin-section">
+      <h2>Updates and important note</h2>
+      <p>This notice may be updated when the website or its services change. It describes the current intended handling of information and is not legal advice or a guarantee of legal compliance. The studio should review it with a South African privacy professional before launch and update the contact and retention details where needed.</p>
+    </article>
+  </section>
+</main>
+<footer>&copy; <span id="year"></span> Glitz &amp; Glam by Doesitbest</footer>
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+</script>
+<script type="module">
+  import { startAnalyticsPageTracking } from './js/analytics.js';
+  startAnalyticsPageTracking();
+</script>
+<script src="js/theme.js" defer></script>
+</body>
+</html>

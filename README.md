@@ -4,28 +4,31 @@ Static HTML, CSS and JavaScript site. Serve it over HTTPS (or localhost while de
 
 ## Supabase setup
 
-1. Create a Supabase project and open its SQL Editor. Run [`supabase/setup.sql`](supabase/setup.sql) in a new project dedicated to this site.
-2. Enable customer sign-ups in Authentication settings so customers can create accounts at `account.html`. Keep owner and developer access restricted: there is no public admin sign-up form, and customer accounts do not receive an `admin_roles` entry. Enable email confirmation and configure the deployed site's `account.html` URL as an allowed redirect URL.
-3. In Authentication > Users, copy each invited user's UUID. In the SQL Editor, assign the roles:
+1. Open a Supabase project's SQL Editor and run [`supabase/setup.sql`](supabase/setup.sql). The script creates the site's tables, row-level security policies, anonymous analytics functions, schedule controls and private review-photo bucket. It also migrates the former `owner` and `developer` role names to `store_admin` and `technical_admin`.
+2. In Authentication settings, enable customer sign-ups and email confirmation. Add the deployed `account.html` and `admin.html` URLs to the allowed redirect URLs.
+3. Invite the two admins in Authentication > Users. Copy each Auth user's UUID, then assign roles in the SQL Editor:
 
    ```sql
    insert into public.admin_roles (user_id, role) values
-     ('OWNER_AUTH_USER_UUID', 'owner'),
-     ('DEVELOPER_AUTH_USER_UUID', 'developer');
+     ('STORE_ADMIN_AUTH_USER_UUID', 'store_admin'),
+     ('TECHNICAL_ADMIN_AUTH_USER_UUID', 'technical_admin')
+   on conflict (user_id) do update set role = excluded.role;
    ```
 
-   The owner can manage catalogue items and customer requests, review private contact details, and approve or reject reviews. Developer access is restricted to technical/admin status and does not grant access to reviews, customer requests, or client contact details. Use unique strong passwords and enable MFA for both accounts where available.
-4. In Project Settings > API, copy the Project URL and the publishable (or legacy `anon`) key into `js/supabase-config.js`. These are browser-visible credentials; **never** put a service-role or secret key in this site.
-5. Deploy the site over HTTPS. The small footer link opens `admin.html`; it is not a security measure. Supabase Auth and the database/storage row-level security policies enforce access.
+   The store admin manages catalogue items, customer requests and contact details, reviews and booked periods. The technical admin has technical oversight and aggregate analytics only; customer records and private review contact details are not available to that role. Admin sign-up is not available on the site. Use strong, unique passwords and enable MFA where available.
+4. In Project Settings > API, set the Project URL and publishable (or legacy `anon`) key in `js/supabase-config.js`. The URL is already set for the current project; replace the placeholder key. A publishable/anon key is intended to be visible in browser code and is not a secret. **Never** add a service-role or secret key to the website or commit one to source control.
+5. Deploy over HTTPS. Supabase Auth and database/storage policies—not the hidden admin link—enforce access. Configure your Supabase Auth email templates and production redirect URLs before launch.
 
-The owner manages catalogue items in `admin.html`; active items appear in the public catalogue. Customers add items to a selection, sign in or create an account, and submit a request. Requests are estimates, not confirmed bookings or payments. Customers can see only their own request history; the owner can update request statuses.
+The SQL script is intended to be safe to run again for this site's schema. If an existing project has custom policies or data, review the SQL changes before applying them.
 
-Client reviews are submitted without client accounts and remain pending until the owner approves them. Only approved reviews and their photos are public; client WhatsApp numbers are not returned by the public review view. Photo uploads are limited to JPEG, PNG or WebP, up to three images and 5 MB per image. The private storage bucket exposes approved images through time-limited URLs.
+## Site behavior
 
-Helpful/not-helpful voting uses a browser-stored random voter ID so a visitor can change their vote. As with any unauthenticated public vote, this is a basic duplicate-vote deterrent, not protection against deliberate vote manipulation; stronger abuse prevention would need a server-side rate limit and/or CAPTCHA.
+- Customers browse the catalogue, see an estimate, and can send a request after signing in. The website does not take payments; the studio confirms availability, final pricing and any payment arrangements directly.
+- The store admin can block a start/end period in the dashboard. The public booking form checks those blocks for the selected date and rejects a requested start time inside a blocked period. Appointment requests made through WhatsApp are not saved as confirmed appointments; an admin must still confirm them.
+- Reviews remain pending until the store admin approves them. Only approved reviews and photos are public; client WhatsApp numbers are not returned by the public review view. Photo uploads allow JPEG, PNG or WebP, up to three images and 5 MB each.
+- Both admin roles read site-wide analytics from Supabase through a role-checked aggregate function. Analytics are stored as daily counters by fixed page and event category—there are no event-level timestamps, account IDs or customer contact fields. Page dwell time is recorded when a page is left; catalogue cards visible for at least one second contribute per-item view and dwell-time totals. These are aggregate impressions, not unique visitors. “Uncleared cart exits” counts account-page exits with a saved selection and is an event count, not a count of unique visitors or proof of intent. Booking enquiries count clicks that open WhatsApp, not confirmed bookings. Metrics are estimates and may be incomplete.
+- The display theme is shared across the site. Catalogue selections and display preferences remain in the visitor's browser. The privacy notice is in [`privacy.html`](privacy.html); it is an informational summary, not legal advice. Review it with a South African privacy professional and confirm retention, contact and processor details before launch.
 
 ## Local development
 
-Open the folder with VS Code Live Server or another local HTTP server. Set the Supabase project URL and publishable/anon key before testing sign-in, customer requests, reviews, or catalogue management.
-
-The theme preference and unsubmitted catalogue selection are stored in the visitor's browser. The analytics dashboard also uses browser-local storage, so its visit and lead counts reflect only the browser used to view the dashboard, not site-wide traffic.
+Open the folder with VS Code Live Server or another local HTTP server. Set the Supabase publishable/anon key before testing sign-in, customer requests, reviews, catalogue management, booking availability or database analytics. No additional key belongs in `.gitignore`; keep actual secrets out of the frontend and source control.
