@@ -108,6 +108,8 @@
         <label>Price (R)<input id="cataloguePrice" type="number" min="0" step="0.01" required></label>
         <label>Display order<input id="catalogueOrder" type="number" step="1" value="0" required></label>
         <label class="wide">Description<textarea id="catalogueDescription" maxlength="500" rows="3"></textarea></label>
+        <label class="wide">Product photo (optional)<input id="catalogueImage" type="file" accept="image/jpeg,image/png,image/webp"><span class="privacy-note">JPEG, PNG or WebP; maximum 5 MB. Choosing a new photo replaces the current one.</span></label>
+        <div id="catalogueImagePreview" class="catalogue-image-preview wide" hidden></div>
         <label><span>Visible in public catalogue</span><input id="catalogueActive" type="checkbox" checked></label>
         <div class="account-actions wide">
           <button id="saveCatalogueItem" class="btn" type="submit">Add catalogue item</button>
@@ -118,7 +120,11 @@
     </section>
 
     <section id="requestManagement" class="store-management" hidden>
-      <div class="divider-heading"><h3>Customer requests</h3></div>
+      <div class="divider-heading">
+        <div><h3>Customer requests</h3><p id="requestSummary" class="privacy-note">Loading customer requests from Supabase...</p></div>
+        <button id="refreshRequests" class="btn btn-secondary" type="button">Refresh requests</button>
+      </div>
+      <p class="privacy-note">These are catalogue requests saved in Supabase. Customer phone numbers are available here; appointment enquiries sent through WhatsApp are not saved as requests.</p>
       <div id="adminRequests" class="admin-list"></div>
     </section>
 
