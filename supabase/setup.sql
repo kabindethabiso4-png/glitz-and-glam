@@ -53,6 +53,21 @@ create table if not exists public.catalogue_items (
   created_at timestamptz not null default now()
 );
 
+alter table public.catalogue_items
+  add column if not exists image_path text;
+
+insert into public.catalogue_items
+  (name, category, description, price, is_active, sort_order)
+select starter.name, starter.category, starter.description, 0, false, starter.sort_order
+from (values
+  ('Full Glam Make-up Application', 'Make-up Artistry', 'Starter draft. Set your price, update the service details and add a photo before making it visible.', 10),
+  ('Bridal Make-up Package', 'Bridal & Occasions', 'Starter draft. Set your price, update the service details and add a photo before making it visible.', 20),
+  ('Hair & Wig Styling', 'Hair & Wig Styling', 'Starter draft. Set your price, update the service details and add a photo before making it visible.', 30)
+) as starter(name, category, description, sort_order)
+where not exists (
+  select 1 from public.catalogue_items existing where existing.name = starter.name
+);
+
 create table if not exists public.catalogue_item_analytics_daily (
   day date not null,
   catalogue_item_id uuid not null references public.catalogue_items(id) on delete cascade,
@@ -174,7 +189,7 @@ create policy "Store admin can update request status"
 revoke all on public.catalogue_items from anon, authenticated;
 revoke all on public.service_requests from anon, authenticated;
 grant select on public.catalogue_items to anon, authenticated;
-grant insert (name, category, description, price, is_active, sort_order), update (name, category, description, price, is_active, sort_order), delete on public.catalogue_items to authenticated;
+grant insert (name, category, description, price, is_active, sort_order, image_path), update (name, category, description, price, is_active, sort_order, image_path), delete on public.catalogue_items to authenticated;
 grant select on public.service_requests to authenticated;
 grant update (status) on public.service_requests to authenticated;
 
@@ -660,6 +675,35 @@ on conflict (id) do update set
   public = excluded.public,
   file_size_limit = excluded.file_size_limit,
   allowed_mime_types = excluded.allowed_mime_types;
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('catalogue-images', 'catalogue-images', true, 5242880, array['image/jpeg', 'image/png', 'image/webp'])
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "Store admins can upload catalogue photos" on storage.objects;
+create policy "Store admins can upload catalogue photos"
+  on storage.objects for insert to authenticated
+  with check (
+    bucket_id = 'catalogue-images'
+    and exists (
+      select 1 from public.admin_roles
+      where user_id = (select auth.uid()) and role = 'store_admin'
+    )
+  );
+
+drop policy if exists "Store admins can delete catalogue photos" on storage.objects;
+create policy "Store admins can delete catalogue photos"
+  on storage.objects for delete to authenticated
+  using (
+    bucket_id = 'catalogue-images'
+    and exists (
+      select 1 from public.admin_roles
+      where user_id = (select auth.uid()) and role = 'store_admin'
+    )
+  );
 
 drop policy if exists "Submit photos for pending reviews" on storage.objects;
 create policy "Submit photos for pending reviews"
