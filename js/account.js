@@ -1,5 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import { SUPABASE_CONFIGURED, SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase-config.js';
+import { startAnalyticsPageTracking } from './analytics.js';
 
 const CART_KEY = 'glitzGlam.cart.v1';
 const supabase = SUPABASE_CONFIGURED
@@ -15,7 +16,73 @@ const signUpForm = document.getElementById('signUpForm');
 const resetForm = document.getElementById('resetForm');
 const requestForm = document.getElementById('requestForm');
 let activeUser = null;
+startAnalyticsPageTracking();
 document.getElementById('year').textContent = new Date().getFullYear();
+
+function getPasswordSafetyChecks(value) {
+  return {
+    length: value.length >= 8,
+    uppercase: /[A-Z]/.test(value),
+    lowercase: /[a-z]/.test(value),
+    number: /\d/.test(value),
+    symbol: /[^A-Za-z0-9]/.test(value)
+  };
+}
+
+function setupPasswordExperience(passwordId, confirmationId, visibilityId, strengthId, matchId) {
+  const password = document.getElementById(passwordId);
+  const confirmation = document.getElementById(confirmationId);
+  const visibility = document.getElementById(visibilityId);
+  const strength = document.getElementById(strengthId);
+  const match = document.getElementById(matchId);
+  function updateStrength() {
+    const value = password.value;
+    const checks = getPasswordSafetyChecks(value);
+    let passed = 0;
+    Object.entries(checks).forEach(([name, satisfied]) => {
+      const item = strength.querySelector(`[data-password-check="${name}"]`);
+      item.classList.toggle('is-satisfied', satisfied);
+      item.querySelector('input').checked = satisfied;
+      passed += Number(satisfied);
+    });
+    strength.querySelector('[data-strength-count]').textContent = `${passed} of 5 safety checks passed`;
+  }
+
+  function updateMatch() {
+    if (!confirmation.value) {
+      match.textContent = '';
+      match.classList.remove('is-match', 'is-mismatch');
+      return;
+    }
+    const matches = password.value === confirmation.value;
+    match.textContent = matches ? 'Passwords match.' : 'Passwords do not match yet.';
+    match.classList.toggle('is-match', matches);
+    match.classList.toggle('is-mismatch', !matches);
+  }
+
+  function updatePasswords() {
+    updateStrength();
+    updateMatch();
+  }
+
+  password.addEventListener('input', updatePasswords);
+  confirmation.addEventListener('input', updateMatch);
+  visibility.addEventListener('change', () => {
+    const type = visibility.checked ? 'text' : 'password';
+    password.type = type;
+    confirmation.type = type;
+  });
+  password.form.addEventListener('reset', () => window.setTimeout(() => {
+    const type = visibility.checked ? 'text' : 'password';
+    password.type = type;
+    confirmation.type = type;
+    updatePasswords();
+  }, 0));
+  updatePasswords();
+}
+
+setupPasswordExperience('signUpPassword', 'confirmSignUpPassword', 'showSignUpPasswords', 'signUpPasswordStrength', 'signUpPasswordMatch');
+setupPasswordExperience('newPassword', 'confirmPassword', 'showNewPasswords', 'newPasswordStrength', 'newPasswordMatch');
 
 function showAuthForm(form) {
   signInForm.hidden = form !== signInForm;
@@ -201,7 +268,7 @@ signInForm.addEventListener('submit', async event => {
   });
   setBusy(signInForm, false);
   if (error) {
-    authMessage.textContent = 'Sign-in failed. Check your email and password, then try again.';
+    authMessage.textContent = `Sign-in failed: ${error.message}`;
     console.error('Customer sign-in failed:', error);
     return;
   }
@@ -210,6 +277,18 @@ signInForm.addEventListener('submit', async event => {
 
 signUpForm.addEventListener('submit', async event => {
   event.preventDefault();
+  const password = document.getElementById('signUpPassword').value;
+  const confirmation = document.getElementById('confirmSignUpPassword').value;
+  if (Object.values(getPasswordSafetyChecks(password)).some(passed => !passed)) {
+    authMessage.textContent = 'Please complete all 5 password safety checks before creating your account.';
+    document.getElementById('signUpPassword').focus();
+    return;
+  }
+  if (password !== confirmation) {
+    authMessage.textContent = 'The passwords do not match.';
+    document.getElementById('confirmSignUpPassword').focus();
+    return;
+  }
   if (!supabase) {
     authMessage.textContent = 'Account services are not configured. Please contact the studio.';
     return;
@@ -223,7 +302,7 @@ signUpForm.addEventListener('submit', async event => {
   });
   setBusy(signUpForm, false);
   if (error) {
-    authMessage.textContent = 'Your account could not be created. Check your details or try signing in.';
+    authMessage.textContent = `Your account could not be created: ${error.message}`;
     console.error('Customer sign-up failed:', error);
     return;
   }
@@ -323,8 +402,14 @@ document.getElementById('newPasswordForm').addEventListener('submit', async even
   event.preventDefault();
   const password = document.getElementById('newPassword').value;
   const confirmation = document.getElementById('confirmPassword').value;
+  if (Object.values(getPasswordSafetyChecks(password)).some(passed => !passed)) {
+    accountMessage.textContent = 'Please complete all 5 password safety checks before updating your password.';
+    document.getElementById('newPassword').focus();
+    return;
+  }
   if (password !== confirmation) {
     accountMessage.textContent = 'The passwords do not match.';
+    document.getElementById('confirmPassword').focus();
     return;
   }
   const form = event.currentTarget;

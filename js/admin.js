@@ -1,135 +1,153 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import { SUPABASE_CONFIGURED, SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase-config.js';
+import { startAnalyticsPageTracking } from './analytics.js';
 
 const IMAGE_BUCKET = 'review-images';
-const ANALYTICS_KEY = 'glitzGlam.analytics.v1';
 const supabase = SUPABASE_CONFIGURED
   ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
 
+startAnalyticsPageTracking();
 const loginPanel = document.getElementById('loginPanel');
 const dashboardPanel = document.getElementById('dashboardPanel');
 const loginForm = document.getElementById('loginForm');
+const adminResetForm = document.getElementById('adminResetForm');
 const loginMessage = document.getElementById('loginMessage');
 const dashboardMessage = document.getElementById('dashboardMessage');
 const moderationPanel = document.getElementById('moderationPanel');
-const developerNotice = document.getElementById('developerNotice');
+const technicalNotice = document.getElementById('technicalNotice');
 const catalogueManagement = document.getElementById('catalogueManagement');
 const requestManagement = document.getElementById('requestManagement');
+const scheduleManagement = document.getElementById('scheduleManagement');
 document.getElementById('year').textContent = new Date().getFullYear();
 
-function readAnalyticsState() {
-  try {
-    const raw = localStorage.getItem(ANALYTICS_KEY);
-    if (!raw) return { visits: [], events: [] };
-    const parsed = JSON.parse(raw);
-    return {
-      visits: Array.isArray(parsed.visits) ? parsed.visits : [],
-      events: Array.isArray(parsed.events) ? parsed.events : []
-    };
-  } catch (error) {
-    console.error('Unable to read analytics state:', error);
-    return { visits: [], events: [] };
-  }
-}
-
-function renderTrafficChart(visitLogs) {
+function renderTrafficChart(daily) {
   const chart = document.getElementById('trafficChart');
-  const buckets = new Map();
-  visitLogs.forEach(visit => {
-    const date = new Date(visit.time || visit.date).toISOString().slice(0, 10);
-    buckets.set(date, (buckets.get(date) || 0) + 1);
-  });
-
-  const dates = [...buckets.keys()].slice(-7);
-  const max = Math.max(...[...buckets.values()].slice(-7), 1);
   chart.replaceChildren();
-  dates.forEach((date) => {
+  const recent = daily.slice(-7);
+  const maximum = Math.max(...recent.map(day => day.visits), 1);
+  if (!recent.length) {
+    chart.textContent = 'No visit data yet.';
+    return;
+  }
+  recent.forEach(day => {
     const bar = document.createElement('div');
-    const count = buckets.get(date);
     bar.className = 'traffic-bar';
-    bar.style.height = `${Math.max(18, (count / max) * 100)}%`;
-    bar.setAttribute('data-label', new Date(date).toLocaleDateString('en-ZA', { day: 'numeric' }));
+    bar.style.height = `${Math.max(18, (day.visits / maximum) * 100)}%`;
+    bar.setAttribute('data-label', new Date(`${day.day}T12:00:00`).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' }));
+    bar.title = `${day.visits} visits · ${day.booking_requests} booking requests · ${day.unfinished_selections} uncleared carts`;
     chart.append(bar);
   });
 }
 
-function renderGrowthPlan(analytics) {
-  const list = document.getElementById('growthPlan');
-  const bookingCount = analytics.events.filter(event => event.type === 'booking_request').length;
-  const reviewCount = analytics.events.filter(event => event.type === 'review_submission').length;
-  const options = [
-    '<strong>Google Business Profile</strong> · Free and essential for local SEO in Soshanguve and Pretoria',
-    '<strong>Instagram + Reels</strong> · R400-R1,200/mo for boosted reach and client story content',
-    '<strong>WhatsApp Business</strong> · Free to start; upgrade to catalog features if needed',
-    '<strong>Google Ads</strong> · R800-R2,500/mo for high-intent local beauty searches',
-    `<strong>Starter budget</strong> · ${bookingCount || reviewCount ? 'R1,500-R4,500/mo recommended' : 'R1,500-R4,500/mo recommended to grow leads quickly'}`
-  ];
+function renderMetricList(targetId, rows, labelKey, countKey, countLabel) {
+  const list = document.getElementById(targetId);
   list.replaceChildren();
-  options.forEach(option => {
+  if (!rows.length) {
+    const empty = document.createElement('li');
+    empty.textContent = 'No data yet.';
+    list.append(empty);
+    return;
+  }
+  rows.forEach(row => {
     const item = document.createElement('li');
-    item.innerHTML = option;
+    const label = document.createElement('strong');
+    label.textContent = row[labelKey];
+    const count = document.createElement('span');
+    count.textContent = `${row[countKey]} ${countLabel}`;
+    item.append(label, count);
     list.append(item);
   });
 }
 
-function renderServiceBreakdown(analytics) {
-  const list = document.getElementById('serviceBreakdown');
-  const services = new Map();
-  analytics.events
-    .filter(event => event.type === 'booking_request' && event.service)
-    .forEach(event => {
-      services.set(event.service, (services.get(event.service) || 0) + 1);
-    });
-
-  const items = [...services.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4);
+function renderPageBreakdown(rows) {
+  const list = document.getElementById('pageBreakdown');
   list.replaceChildren();
-  if (!items.length) {
+  if (!rows.length) {
     const empty = document.createElement('li');
-    const text = document.createElement('strong');
-    text.textContent = 'No leads yet · Start collecting bookings and reviews to see demand';
-    empty.append(text);
+    empty.textContent = 'No data yet.';
     list.append(empty);
     return;
   }
-  items.forEach(([service, count]) => {
+  rows.forEach(row => {
     const item = document.createElement('li');
     const label = document.createElement('strong');
-    label.textContent = service;
+    label.textContent = row.page;
     const total = document.createElement('span');
-    total.textContent = `${count} lead${count > 1 ? 's' : ''}`;
+    total.textContent = `${row.visits} visits · avg ${formatDuration(row.average_seconds)}`;
     item.append(label, total);
     list.append(item);
   });
 }
 
-function renderAnalyticsDashboard() {
-  const analytics = readAnalyticsState();
-  const visitCount = analytics.visits.length;
-  const uniqueDays = new Set(analytics.visits.map(visit => visit.date || visit.time.slice(0, 10))).size;
-  const bookingCount = analytics.events.filter(event => event.type === 'booking_request').length;
-  const reviewCount = analytics.events.filter(event => event.type === 'review_submission').length;
+function renderCatalogueBreakdown(rows) {
+  const list = document.getElementById('catalogueItemBreakdown');
+  list.replaceChildren();
+  if (!rows.length) {
+    const empty = document.createElement('li');
+    empty.textContent = 'No engaged catalogue views yet.';
+    list.append(empty);
+    return;
+  }
+  rows.forEach(row => {
+    const item = document.createElement('li');
+    const label = document.createElement('strong');
+    label.textContent = row.name;
+    const total = document.createElement('span');
+    total.textContent = `${row.views} views · avg ${formatDuration(row.average_seconds)}`;
+    item.append(label, total);
+    list.append(item);
+  });
+}
 
-  document.getElementById('dashboardVisits').textContent = String(visitCount);
-  document.getElementById('dashboardUniqueDays').textContent = String(uniqueDays);
-  document.getElementById('dashboardBookings').textContent = String(bookingCount);
-  document.getElementById('dashboardReviews').textContent = String(reviewCount);
+function formatDuration(seconds) {
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remainder = seconds % 60;
+  return remainder ? `${minutes}m ${remainder}s` : `${minutes}m`;
+}
 
-  renderTrafficChart(analytics.visits);
-  renderServiceBreakdown(analytics);
-  renderGrowthPlan(analytics);
+async function renderAnalyticsDashboard() {
+  const notice = document.getElementById('analyticsNotice');
+  notice.textContent = 'Loading aggregate analytics...';
+  document.querySelectorAll('.metric-card strong').forEach(metric => {
+    metric.textContent = '—';
+  });
+  const { data, error } = await supabase.rpc('get_admin_analytics');
+  if (error || !data) {
+    notice.textContent = 'Analytics could not be loaded. Please try again later.';
+    if (error) console.error('Unable to load aggregate admin analytics:', error);
+    return;
+  }
+  const totals = data.totals;
+  document.getElementById('dashboardVisits').textContent = String(totals.pageViews);
+  document.getElementById('dashboardAvgDuration').textContent = formatDuration(totals.averageVisitSeconds);
+  document.getElementById('dashboardUnclearedCarts').textContent = String(totals.unfinishedSelections);
+  document.getElementById('dashboardBookings').textContent = String(totals.bookingRequests);
+  document.getElementById('dashboardServiceRequests').textContent = String(totals.serviceRequests);
+  document.getElementById('dashboardOpenRequests').textContent = String(totals.openRequests);
+  document.getElementById('dashboardReviews').textContent = String(totals.reviewSubmissions);
+  renderTrafficChart(data.daily);
+  renderPageBreakdown(data.topPages);
+  renderCatalogueBreakdown(data.catalogueItems);
+  renderMetricList('serviceBreakdown', data.topServices, 'service', 'requests', 'requests');
+  renderMetricList('requestStatusBreakdown', data.requestStatuses, 'status', 'requests', 'requests');
+  notice.textContent = 'Anonymous aggregate data only. Visit and cart metrics are estimates; no customer contact details are included.';
 }
 
 function showLogin(message = '') {
   loginPanel.hidden = false;
   dashboardPanel.hidden = true;
+  loginForm.hidden = false;
+  adminResetForm.hidden = true;
+  document.getElementById('adminNewPasswordForm').hidden = true;
+  document.getElementById('showAdminReset').hidden = false;
+  document.getElementById('cancelAdminReset').hidden = true;
   loginMessage.textContent = message;
 }
 
 function showAccessError(message) {
-  loginPanel.hidden = false;
-  dashboardPanel.hidden = true;
-  loginMessage.textContent = message;
+  showLogin(message);
 }
 
 async function loadAdmin(user) {
@@ -143,24 +161,25 @@ async function loadAdmin(user) {
     console.error('Unable to verify admin role:', error);
     return;
   }
-  if (!roleRecord) {
+  if (!roleRecord || !['store_admin', 'technical_admin'].includes(roleRecord.role)) {
     await supabase.auth.signOut();
-    showAccessError('This account is not authorized to access the admin area.');
+    showAccessError('This account does not have a valid admin role. Ask the site owner to assign store_admin or technical_admin in public.admin_roles.');
     return;
   }
 
   loginPanel.hidden = true;
   dashboardPanel.hidden = false;
   document.getElementById('adminRole').textContent =
-    roleRecord.role === 'owner' ? 'Business owner' : 'Developer access';
-  moderationPanel.hidden = roleRecord.role !== 'owner';
-  developerNotice.hidden = roleRecord.role !== 'developer';
-  renderAnalyticsDashboard();
-  if (roleRecord.role === 'owner') {
-    await Promise.all([showReviews(), showCatalogueItems(), showServiceRequests()]);
-  }
-  catalogueManagement.hidden = roleRecord.role !== 'owner';
-  requestManagement.hidden = roleRecord.role !== 'owner';
+    roleRecord.role === 'store_admin' ? 'Store admin' : 'Technical admin';
+  moderationPanel.hidden = roleRecord.role !== 'store_admin';
+  technicalNotice.hidden = roleRecord.role !== 'technical_admin';
+  catalogueManagement.hidden = roleRecord.role !== 'store_admin';
+  requestManagement.hidden = roleRecord.role !== 'store_admin';
+  scheduleManagement.hidden = roleRecord.role !== 'store_admin';
+  const storeTasks = roleRecord.role === 'store_admin'
+    ? [showReviews(), showCatalogueItems(), showServiceRequests(), showScheduleBlocks()]
+    : [];
+  await Promise.all([renderAnalyticsDashboard(), ...storeTasks]);
 }
 
 function resetCatalogueForm() {
@@ -319,6 +338,79 @@ async function updateRequestStatus(id, status) {
   dashboardMessage.textContent = 'Request status updated.';
 }
 
+async function showScheduleBlocks() {
+  const target = document.getElementById('scheduleBlocks');
+  const { data: blocks, error } = await supabase
+    .from('appointment_blocks')
+    .select('id, starts_at, ends_at')
+    .order('starts_at', { ascending: true });
+  if (error) {
+    target.textContent = 'Booked periods could not be loaded.';
+    console.error('Unable to load appointment blocks:', error);
+    return;
+  }
+  target.replaceChildren();
+  if (!blocks.length) {
+    const empty = document.createElement('p');
+    empty.className = 'empty-state';
+    empty.textContent = 'No periods are currently blocked.';
+    target.append(empty);
+    return;
+  }
+
+  blocks.forEach(block => {
+    const row = document.createElement('article');
+    row.className = 'admin-list-item';
+    const details = document.createElement('div');
+    const heading = document.createElement('h3');
+    heading.textContent = new Date(block.starts_at).toLocaleString('en-ZA');
+    const ends = document.createElement('p');
+    ends.textContent = `Until ${new Date(block.ends_at).toLocaleString('en-ZA')}`;
+    details.append(heading, ends);
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'btn btn-danger';
+    remove.textContent = 'Remove block';
+    remove.addEventListener('click', () => removeScheduleBlock(block.id));
+    row.append(details, remove);
+    target.append(row);
+  });
+}
+
+async function removeScheduleBlock(id) {
+  const { error } = await supabase.from('appointment_blocks').delete().eq('id', id);
+  if (error) {
+    dashboardMessage.textContent = 'The booked period could not be removed.';
+    console.error('Unable to remove appointment block:', error);
+    return;
+  }
+  dashboardMessage.textContent = 'Booked period removed from the schedule.';
+  await showScheduleBlocks();
+}
+
+document.getElementById('scheduleForm').addEventListener('submit', async event => {
+  event.preventDefault();
+  const startsAt = new Date(document.getElementById('blockStart').value);
+  const endsAt = new Date(document.getElementById('blockEnd').value);
+  if (!Number.isFinite(startsAt.getTime()) || !Number.isFinite(endsAt.getTime()) || endsAt <= startsAt) {
+    dashboardMessage.textContent = 'Choose a valid period with an end time after its start time.';
+    return;
+  }
+
+  const { error } = await supabase.from('appointment_blocks').insert({
+    starts_at: startsAt.toISOString(),
+    ends_at: endsAt.toISOString()
+  });
+  if (error) {
+    dashboardMessage.textContent = 'The period could not be blocked.';
+    console.error('Unable to block appointment period:', error);
+    return;
+  }
+  document.getElementById('scheduleForm').reset();
+  dashboardMessage.textContent = 'Period blocked. The public availability check will now exclude it.';
+  await showScheduleBlocks();
+});
+
 document.getElementById('catalogueForm').addEventListener('submit', async event => {
   event.preventDefault();
   const id = document.getElementById('catalogueItemId').value;
@@ -460,11 +552,67 @@ loginForm.addEventListener('submit', async event => {
   });
   button.disabled = false;
   if (error) {
-    loginMessage.textContent = 'Sign-in failed. Check your credentials or contact the site administrator.';
+    loginMessage.textContent = `Sign-in failed: ${error.message}`;
     console.error('Admin sign-in failed:', error);
     return;
   }
   await loadAdmin(data.user);
+});
+
+document.getElementById('showAdminReset').addEventListener('click', () => {
+  loginForm.hidden = true;
+  adminResetForm.hidden = false;
+  document.getElementById('showAdminReset').hidden = true;
+  document.getElementById('cancelAdminReset').hidden = false;
+  loginMessage.textContent = '';
+});
+
+document.getElementById('cancelAdminReset').addEventListener('click', () => showLogin());
+
+adminResetForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  if (!supabase) {
+    loginMessage.textContent = 'Password recovery is not configured. Contact the site owner.';
+    return;
+  }
+  const button = adminResetForm.querySelector('button[type="submit"]');
+  button.disabled = true;
+  const email = document.getElementById('adminResetEmail').value.trim();
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: new URL('admin.html', window.location.href).href
+  });
+  button.disabled = false;
+  if (error) {
+    loginMessage.textContent = 'A reset link could not be sent. Please try again later.';
+    console.error('Admin password reset request failed:', error);
+    return;
+  }
+  loginMessage.textContent = 'If an authorized account exists for that email, a reset link will arrive shortly.';
+  adminResetForm.reset();
+});
+
+document.getElementById('adminNewPasswordForm').addEventListener('submit', async event => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const password = document.getElementById('adminNewPassword').value;
+  if (password !== document.getElementById('adminConfirmPassword').value) {
+    loginMessage.textContent = 'The passwords do not match.';
+    return;
+  }
+  const button = form.querySelector('button[type="submit"]');
+  button.disabled = true;
+  loginMessage.textContent = 'Updating your password...';
+  const { data, error } = await supabase.auth.updateUser({ password });
+  button.disabled = false;
+  if (error) {
+    loginMessage.textContent = 'Your password could not be updated. Please request a new reset link.';
+    console.error('Unable to update admin password:', error);
+    return;
+  }
+  form.reset();
+  form.hidden = true;
+  loginMessage.textContent = 'Password updated. Checking your admin access...';
+  if (data.user) await loadAdmin(data.user);
 });
 
 document.getElementById('signOutButton').addEventListener('click', async () => {
@@ -477,18 +625,33 @@ document.getElementById('signOutButton').addEventListener('click', async () => {
   showLogin('You have been signed out.');
 });
 
-document.getElementById('year').textContent = new Date().getFullYear();
-
 if (!supabase) {
   showLogin('Supabase is not configured. Follow the setup steps in README.md.');
 } else {
+  let recoveringPassword = false;
+  supabase.auth.onAuthStateChange(event => {
+    if (event === 'PASSWORD_RECOVERY') {
+      recoveringPassword = true;
+      loginPanel.hidden = false;
+      dashboardPanel.hidden = true;
+      loginForm.hidden = true;
+      adminResetForm.hidden = true;
+      document.getElementById('adminNewPasswordForm').hidden = false;
+      document.getElementById('showAdminReset').hidden = true;
+      document.getElementById('cancelAdminReset').hidden = true;
+      loginMessage.textContent = 'Choose a new password for your admin account.';
+    }
+  });
   supabase.auth.getSession().then(({ data, error }) => {
     if (error) {
       showLogin('Your sign-in session could not be checked. Please sign in again.');
       console.error('Unable to check admin session:', error);
       return;
     }
+    if (recoveringPassword) return;
     if (data.session) loadAdmin(data.session.user);
     else showLogin();
   });
 }
+
+document.getElementById('year').textContent = new Date().getFullYear();

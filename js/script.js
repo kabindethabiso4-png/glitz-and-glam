@@ -1,5 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import { SUPABASE_CONFIGURED, SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase-config.js';
+import { observeCatalogueCard, recordSiteEvent, startAnalyticsPageTracking } from './analytics.js';
 
 const WHATSAPP = '27655114153';
 const IMAGE_BUCKET = 'review-images';
@@ -11,8 +12,36 @@ const voteChoiceKey = 'glitzGlam.reviewVotes.v1';
 const supabase = SUPABASE_CONFIGURED
   ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
+const reviewForm = document.getElementById('reviewForm');
+const reviewSignInPrompt = document.getElementById('reviewSignInPrompt');
+const reviewSetupMessage = document.getElementById('reviewSetupMessage');
 
+startAnalyticsPageTracking();
 document.getElementById('year').textContent = new Date().getFullYear();
+
+function updateReviewAccess(session) {
+  const signedIn = Boolean(session?.user);
+  reviewForm.hidden = !signedIn;
+  reviewSignInPrompt.hidden = signedIn || !supabase;
+  reviewSetupMessage.hidden = Boolean(supabase);
+}
+
+if (supabase) {
+  supabase.auth.onAuthStateChange((_event, session) => updateReviewAccess(session));
+  supabase.auth.getSession().then(({ data, error }) => {
+    if (error) {
+      reviewForm.hidden = true;
+      reviewSignInPrompt.hidden = true;
+      reviewSetupMessage.hidden = false;
+      reviewSetupMessage.textContent = 'Your sign-in could not be checked. Please refresh the page and try again.';
+      console.error('Unable to check customer sign-in for review access:', error);
+      return;
+    }
+    updateReviewAccess(data.session);
+  });
+} else {
+  updateReviewAccess(null);
+}
 
 const burger = document.getElementById('burger');
 const links = document.getElementById('links');
@@ -38,61 +67,6 @@ if (hero) {
     hero.appendChild(petal);
   }
 }
-
-const analyticsKey = 'glitzGlam.analytics.v1';
-
-function readAnalyticsState() {
-  try {
-    const raw = localStorage.getItem(analyticsKey);
-    if (!raw) {
-      return { visits: [], events: [] };
-    }
-    const data = JSON.parse(raw);
-    return {
-      visits: Array.isArray(data.visits) ? data.visits : [],
-      events: Array.isArray(data.events) ? data.events : []
-    };
-  } catch (error) {
-    console.error('Unable to read analytics state:', error);
-    return { visits: [], events: [] };
-  }
-}
-
-function writeAnalyticsState(state) {
-  try {
-    localStorage.setItem(analyticsKey, JSON.stringify({
-      visits: state.visits.slice(-500),
-      events: state.events.slice(-250)
-    }));
-  } catch (error) {
-    console.error('Unable to save analytics state:', error);
-  }
-}
-
-function trackVisit() {
-  if (window.location.pathname.includes('admin.html')) return;
-  const state = readAnalyticsState();
-  const today = new Date().toISOString().slice(0, 10);
-  state.visits.push({
-    date: today,
-    time: new Date().toISOString(),
-    path: window.location.pathname,
-    referrer: document.referrer || 'direct'
-  });
-  writeAnalyticsState(state);
-}
-
-function recordEvent(type, payload = {}) {
-  const state = readAnalyticsState();
-  state.events.push({
-    type,
-    time: new Date().toISOString(),
-    ...payload
-  });
-  writeAnalyticsState(state);
-}
-
-trackVisit();
 
 function count(el) {
   const total = Number(el.dataset.n);
@@ -122,15 +96,100 @@ document.querySelectorAll('.rv').forEach((el, index) => {
 });
 
 const date = document.getElementById('date');
-date.min = new Date().toISOString().slice(0, 10);
-document.getElementById('bookForm').addEventListener('submit', event => {
+const time = document.getElementById('time');
+const availabilityMessage = document.getElementById('availabilityMessage');
+const bookForm = document.getElementById('bookForm');
+const now = new Date();
+date.min = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+let bookedPeriods = [];
+let availabilityLoadedFor = '';
+let availabilityRequest = 0;
+
+function localDayBounds(day) {
+  const [year, month, dateOfMonth] = day.split('-').map(Number);
+  const start = new Date(year, month - 1, dateOfMonth);
+  const end = new Date(year, month - 1, dateOfMonth + 1);
+  return { start, end };
+}
+
+function formatLocalTime(value) {
+  return new Date(value).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' });
+}
+
+async function loadBookedPeriods(day) {
+  const requestId = ++availabilityRequest;
+  availabilityLoadedFor = '';
+  bookedPeriods = [];
+  time.setCustomValidity('');
+  if (!day) {
+    availabilityMessage.textContent = 'Choose a date to check current availability.';
+    return false;
+  }
+  if (!supabase) {
+    availabilityMessage.textContent = 'Online availability is not configured. Please contact the studio to check this date.';
+    return false;
+  }
+
+  availabilityMessage.textContent = 'Checking availability...';
+  const { start, end } = localDayBounds(day);
+  const { data, error } = await supabase
+    .from('appointment_blocks')
+    .select('starts_at, ends_at')
+    .lt('starts_at', end.toISOString())
+    .gt('ends_at', start.toISOString())
+    .order('starts_at', { ascending: true });
+  if (requestId !== availabilityRequest || day !== date.value) return false;
+  if (error) {
+    availabilityMessage.textContent = 'Availability could not be checked. Please contact the studio before requesting this time.';
+    console.error('Unable to check appointment availability:', error);
+    return false;
+  }
+
+  bookedPeriods = data;
+  availabilityLoadedFor = day;
+  availabilityMessage.textContent = bookedPeriods.length
+    ? `Unavailable: ${bookedPeriods.map(period => `${formatLocalTime(period.starts_at)}–${formatLocalTime(period.ends_at)}`).join(', ')}.`
+    : 'No blocked periods are listed for this date. The studio will confirm your request.';
+  return true;
+}
+
+async function validateRequestedTime() {
+  time.setCustomValidity('');
+  if (!date.value || !time.value) return false;
+  if (availabilityLoadedFor !== date.value && !await loadBookedPeriods(date.value)) return false;
+  const requestedStart = new Date(`${date.value}T${time.value}`);
+  const conflict = bookedPeriods.find(period => {
+    return requestedStart >= new Date(period.starts_at) && requestedStart < new Date(period.ends_at);
+  });
+  if (conflict) {
+    time.setCustomValidity('This start time is within a period already booked. Choose another time.');
+    availabilityMessage.textContent = `That time is unavailable (${formatLocalTime(conflict.starts_at)}–${formatLocalTime(conflict.ends_at)}). Choose another time.`;
+    time.reportValidity();
+    return false;
+  }
+  return true;
+}
+
+date.addEventListener('change', () => loadBookedPeriods(date.value));
+time.addEventListener('change', () => {
+  if (availabilityLoadedFor === date.value) validateRequestedTime();
+});
+
+bookForm.addEventListener('submit', async event => {
   event.preventDefault();
+  const submitButton = bookForm.querySelector('button[type="submit"]');
+  submitButton.disabled = true;
+  if (!await loadBookedPeriods(date.value) || !await validateRequestedTime()) {
+    submitButton.disabled = false;
+    if (!time.validationMessage && !date.value) availabilityMessage.textContent = 'Choose a date before requesting an appointment.';
+    return;
+  }
   const value = id => document.getElementById(id).value;
   const service = value('service');
   const text = `Hi Glitz & Glam! I would like to book.\nName: ${value('name')}\nPhone: ${value('phone')}\nService: ${service}\nDate: ${value('date')}\nTime: ${value('time')}` + (value('notes') ? `\nNotes: ${value('notes')}` : '');
-  recordEvent('booking_request', { service, date: value('date'), time: value('time') });
+  recordSiteEvent('booking_request', { interest: service });
   document.getElementById('msg').textContent = 'Opening WhatsApp to send your request...';
-  window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
+  window.location.assign(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(text)}`);
 });
 
 function readCart() {
@@ -330,6 +389,7 @@ async function showCatalogue() {
           addButton.textContent = 'Add to selection';
           addButton.addEventListener('click', () => changeCartQuantity(product.id, 1, products));
           card.append(name, price, description, addButton);
+          observeCatalogueCard(card, product.id);
           grid.append(card);
         });
         group.append(grid);
@@ -438,9 +498,13 @@ async function showReviews() {
   count.textContent = reviews.length === 1 ? '1 client review' : `${reviews.length} client reviews`;
   list.replaceChildren();
   if (!reviews.length) {
-    const empty = document.createElement('p');
-    empty.className = 'empty-state';
-    empty.textContent = 'Be the first to share your experience.';
+    const empty = document.createElement('div');
+    empty.className = 'review-empty-state';
+    const heading = document.createElement('h3');
+    heading.textContent = 'A fresh page for your story';
+    const message = document.createElement('p');
+    message.textContent = 'There are no published reviews yet. Be the first to share your Glitz & Glam experience.';
+    empty.append(heading, message);
     list.append(empty);
     return;
   }
@@ -501,7 +565,7 @@ async function showReviews() {
   }
 }
 
-document.getElementById('reviewForm').addEventListener('submit', async event => {
+reviewForm.addEventListener('submit', async event => {
   event.preventDefault();
   const form = event.currentTarget;
   const message = document.getElementById('reviewMessage');
@@ -509,6 +573,18 @@ document.getElementById('reviewForm').addEventListener('submit', async event => 
   const photos = Array.from(document.getElementById('reviewPhotos').files);
   if (!supabase) {
     message.textContent = 'The secure review service is not configured yet. Please contact the studio directly.';
+    return;
+  }
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) {
+    message.textContent = 'Your sign-in could not be verified. Please try again.';
+    console.error('Unable to verify review submitter:', sessionError);
+    return;
+  }
+  const user = sessionData.session?.user;
+  if (!user) {
+    updateReviewAccess(null);
+    message.textContent = 'Sign in to your customer account before submitting a review.';
     return;
   }
   if (photos.length > MAX_IMAGE_COUNT || photos.some(file =>
@@ -528,12 +604,9 @@ document.getElementById('reviewForm').addEventListener('submit', async event => 
   let uploadedPaths = [];
   let inserted = false;
   try {
-    recordEvent('review_submission', {
-      service: document.getElementById('reviewService').value,
-      rating: Number(document.getElementById('reviewRating').value)
-    });
     const { error: insertError } = await supabase.from('reviews').insert({
       id: reviewId,
+      user_id: user.id,
       first_name: document.getElementById('reviewFirstName').value.trim(),
       last_name: document.getElementById('reviewLastName').value.trim(),
       whatsapp: document.getElementById('reviewWhatsApp').value.trim(),
@@ -556,6 +629,7 @@ document.getElementById('reviewForm').addEventListener('submit', async event => 
       if (uploadError) throw uploadError;
       uploadedPaths.push(photoPaths[index]);
     }
+    recordSiteEvent('review_submission');
     form.reset();
     message.textContent = 'Thank you. Your review has been sent to the studio for approval.';
   } catch (error) {

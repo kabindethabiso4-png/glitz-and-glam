@@ -39,12 +39,7 @@ if (savedTheme === 'light' || savedTheme === 'dark') {
   setTheme(savedTheme, false);
 } else {
   const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  toggles.forEach(button => {
-    button.setAttribute('aria-label', `Switch to ${systemTheme === 'dark' ? 'light' : 'dark'} mode`);
-    button.title = `Switch to ${systemTheme === 'dark' ? 'light' : 'dark'} mode`;
-    const label = button.querySelector('[data-theme-label]');
-    if (label) label.textContent = systemTheme === 'dark' ? 'Light' : 'Dark';
-  });
+  setTheme(systemTheme, false);
 }
 
 toggles.forEach(button => button.addEventListener('click', () => {
