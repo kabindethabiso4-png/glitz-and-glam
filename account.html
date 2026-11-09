@@ -18,7 +18,7 @@
   <div class="wrap">
     <a href="index.html" class="brand"><img src="images/logo.jpg" alt="Glitz &amp; Glam logo">Glitz &amp; Glam</a>
     <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark mode" title="Switch to dark mode"><svg class="i"><use href="#i-moon"/></svg><span data-theme-label>Dark</span></button>
-    <a href="index.html#catalogue">Back to catalogue</a>
+    <a href="index.html">Back to home</a>
   </div>
 </nav>
 <main class="wrap admin-content">
@@ -45,9 +45,23 @@
       <h2>Create your account</h2>
       <label for="signUpEmail">Email</label>
       <input id="signUpEmail" type="email" autocomplete="email" required>
-      <label for="signUpPassword">Password (at least 8 characters)</label>
-      <input id="signUpPassword" type="password" autocomplete="new-password" minlength="8" required>
-      <label class="consent-label"><input id="signUpPrivacyConsent" type="checkbox" required><span>I have read the <a href="privacy.html">privacy notice</a> and understand how my account information is used.</span></label>
+      <label for="signUpPassword">Password (complete all 5 safety checks)</label>
+      <input id="signUpPassword" type="password" autocomplete="new-password" minlength="8" aria-describedby="signUpPasswordStrength" required>
+      <div class="password-strength" id="signUpPasswordStrength" data-password-strength="signUpPassword">
+        <p class="password-strength-count" data-strength-count aria-live="polite">0 of 5 safety checks passed</p>
+        <ul class="password-checklist">
+          <li data-password-check="length"><input type="checkbox" disabled aria-hidden="true">At least 8 characters</li>
+          <li data-password-check="uppercase"><input type="checkbox" disabled aria-hidden="true">An uppercase letter</li>
+          <li data-password-check="lowercase"><input type="checkbox" disabled aria-hidden="true">A lowercase letter</li>
+          <li data-password-check="number"><input type="checkbox" disabled aria-hidden="true">A number</li>
+          <li data-password-check="symbol"><input type="checkbox" disabled aria-hidden="true">A symbol (for example, ! or #)</li>
+        </ul>
+      </div>
+      <label for="confirmSignUpPassword">Confirm password</label>
+      <input id="confirmSignUpPassword" type="password" autocomplete="new-password" minlength="8" aria-describedby="signUpPasswordMatch" required>
+      <p id="signUpPasswordMatch" class="password-match" aria-live="polite"></p>
+      <label class="consent-label password-visibility"><input id="showSignUpPasswords" type="checkbox"><span>Show passwords while typing</span></label>
+      <label class="consent-label"><input id="signUpPrivacyConsent" type="checkbox" required><span>I have read the <a href="privacy.html">Privacy notice</a> and understand how my account information is used.</span></label>
       <button class="btn" type="submit">Create account</button>
     </form>
     <form id="resetForm" class="admin-form" hidden>
@@ -70,12 +84,24 @@
       <button id="signOutButton" class="btn btn-secondary" type="button">Sign out</button>
     </div>
     <p id="accountMessage" class="form-message" aria-live="polite" role="status"></p>
-    <form id="newPasswordForm" hidden>
+    <form id="newPasswordForm" class="admin-form" hidden>
       <h3>Choose a new password</h3>
-      <label for="newPassword">New password (at least 8 characters)</label>
-      <input id="newPassword" type="password" autocomplete="new-password" minlength="8" required>
+      <label for="newPassword">New password (complete all 5 safety checks)</label>
+      <input id="newPassword" type="password" autocomplete="new-password" minlength="8" aria-describedby="newPasswordStrength" required>
+      <div class="password-strength" id="newPasswordStrength" data-password-strength="newPassword">
+        <p class="password-strength-count" data-strength-count aria-live="polite">0 of 5 safety checks passed</p>
+        <ul class="password-checklist">
+          <li data-password-check="length"><input type="checkbox" disabled aria-hidden="true">At least 8 characters</li>
+          <li data-password-check="uppercase"><input type="checkbox" disabled aria-hidden="true">An uppercase letter</li>
+          <li data-password-check="lowercase"><input type="checkbox" disabled aria-hidden="true">A lowercase letter</li>
+          <li data-password-check="number"><input type="checkbox" disabled aria-hidden="true">A number</li>
+          <li data-password-check="symbol"><input type="checkbox" disabled aria-hidden="true">A symbol (for example, ! or #)</li>
+        </ul>
+      </div>
       <label for="confirmPassword">Confirm new password</label>
-      <input id="confirmPassword" type="password" autocomplete="new-password" minlength="8" required>
+      <input id="confirmPassword" type="password" autocomplete="new-password" minlength="8" aria-describedby="newPasswordMatch" required>
+      <p id="newPasswordMatch" class="password-match" aria-live="polite"></p>
+      <label class="consent-label password-visibility"><input id="showNewPasswords" type="checkbox"><span>Show passwords while typing</span></label>
       <button class="btn" type="submit">Update password</button>
     </form>
     <section id="request" class="account-panel">

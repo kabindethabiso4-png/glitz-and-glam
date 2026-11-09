@@ -45,7 +45,7 @@
     </ul>
     <a href="#book" class="btn nav-book">Request a Slot</a>
     <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark mode" title="Switch to dark mode"><svg class="i"><use href="#i-moon"/></svg><span data-theme-label>Dark</span></button>
-    <button class="burger" id="burger" aria-label="Menu" aria-expanded="false"><svg class="i"><use href="#i-menu"/></svg></button>
+    <button class="burger" id="burger" type="button" aria-label="Menu" aria-controls="links" aria-expanded="false"><svg class="i"><use href="#i-menu"/></svg></button>
   </div>
 </nav>
 <aside id="themeNotice" class="theme-notice" aria-label="Display preference" hidden>
@@ -133,7 +133,9 @@
   <div class="wrap">
     <div class="title rv"><small>Your experience matters</small><h2>Client Reviews</h2></div>
     <div class="reviews-layout">
-      <form id="reviewForm" class="rv">
+      <p id="reviewSignInPrompt" class="privacy-note review-access-message" hidden>Sign in or create a customer account to leave a review. <a href="account.html">Go to your account</a>.</p>
+      <p id="reviewSetupMessage" class="privacy-note review-access-message" hidden>Review submission is unavailable until the secure account service is configured.</p>
+      <form id="reviewForm" class="rv" hidden>
         <h3>Leave a review</h3>
         <div class="row">
           <div><label for="reviewFirstName">First name</label><input id="reviewFirstName" name="firstName" maxlength="50" autocomplete="given-name" required placeholder="First name"></div>
@@ -185,7 +187,7 @@
       <div class="rv"><h3>Booking</h3>Your appointment is only confirmed by the studio. Any deposit or payment terms will be communicated directly by an admin.</div>
       <div class="rv"><h3>Cancellation</h3>Please contact the studio as early as possible if you need to change or cancel an appointment. The admin will explain any applicable terms when confirming your booking.</div>
       <div class="rv"><h3>Pricing</h3>Catalogue prices are estimates only and may change. The studio will confirm the final price directly with you. No payment is taken on this website.</div>
-      <div class="rv"><h3>No Show</h3>We are willing to move things around and accommodate in some circumstances, as long as there is communication. Applies to new and existing clients.</div>
+      <div class="rv"><h3>Missed appointments</h3>If you cannot attend, please contact the studio as soon as possible. Rescheduling and any applicable no-show arrangements will be discussed directly.</div>
     </div>
   </div>
 </section>
@@ -202,17 +204,26 @@
         <p><svg class="i"><use href="#i-phone"/></svg><span>065 511 4153</span></p>
       </div>
       <form id="bookForm" class="rv">
-        <div class="row"><input id="name" required autocomplete="name" aria-label="Your name" placeholder="Your name"><input id="phone" required type="tel" autocomplete="tel" aria-label="Phone number" placeholder="Phone number"></div>
         <div class="row">
-          <select id="service" aria-label="Service"><option>Make-up Artistry</option><option>Hair &amp; Wig Styling</option><option>Bridal &amp; Occasions</option><option>Lashes &amp; Finishing</option></select>
+          <label class="visually-hidden" for="name">Your name</label>
+          <input id="name" required autocomplete="name" maxlength="100" aria-label="Your name" placeholder="Your name">
+          <label class="visually-hidden" for="phone">Phone number</label>
+          <input id="phone" required type="tel" autocomplete="tel" inputmode="tel" maxlength="30" pattern="[+0-9 ()-]{7,30}" aria-label="Phone number" placeholder="Phone number">
+        </div>
+        <div class="row">
+          <label class="visually-hidden" for="service">Service</label>
+          <select id="service" aria-label="Service" required><option>Make-up Artistry</option><option>Hair &amp; Wig Styling</option><option>Bridal &amp; Occasions</option><option>Lashes &amp; Finishing</option></select>
+          <label class="visually-hidden" for="date">Appointment date</label>
           <input id="date" type="date" aria-label="Appointment date" required>
         </div>
+        <label class="visually-hidden" for="time">Appointment time</label>
         <input id="time" type="time" aria-label="Appointment time" required>
         <p id="availabilityMessage" class="privacy-note" aria-live="polite">Choose a date to check current availability.</p>
-        <textarea id="notes" rows="3" aria-label="Additional booking notes" placeholder="Tell us about your look (optional)"></textarea>
+        <label class="visually-hidden" for="notes">Additional booking notes</label>
+        <textarea id="notes" rows="3" maxlength="1000" aria-label="Additional booking notes" placeholder="Tell us about your look (optional)"></textarea>
         <label class="consent-label"><input id="bookingPrivacyConsent" type="checkbox" required><span>I agree to send these appointment details to the studio via WhatsApp. See the <a href="privacy.html">privacy notice</a>.</span></label>
         <button class="btn" type="submit"><svg class="i"><use href="#i-chat"/></svg> Request Booking via WhatsApp</button>
-        <div id="msg"></div>
+        <p id="msg" class="form-message" aria-live="polite" role="status"></p>
       </form>
     </div>
   </div>
