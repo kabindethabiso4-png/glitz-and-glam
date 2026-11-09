@@ -350,7 +350,7 @@ async function showCatalogue() {
   try {
     const { data: products, error } = await supabase
       .from('catalogue_items')
-      .select('id, name, category, description, price')
+      .select('id, name, category, description, price, image_path')
       .eq('is_active', true)
       .order('sort_order', { ascending: true })
       .order('name', { ascending: true });
@@ -376,6 +376,14 @@ async function showCatalogue() {
         items.forEach(product => {
           const card = document.createElement('article');
           card.className = 'card catalogue-card';
+          if (product.image_path) {
+            const image = document.createElement('img');
+            image.className = 'catalogue-product-image';
+            image.src = supabase.storage.from('catalogue-images').getPublicUrl(product.image_path).data.publicUrl;
+            image.alt = product.name;
+            image.loading = 'lazy';
+            card.append(image);
+          }
           const name = document.createElement('h4');
           name.textContent = product.name;
           const price = document.createElement('p');

@@ -3,6 +3,13 @@ import { SUPABASE_CONFIGURED, SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase
 import { startAnalyticsPageTracking } from './analytics.js';
 
 const IMAGE_BUCKET = 'review-images';
+const CATALOGUE_IMAGE_BUCKET = 'catalogue-images';
+const MAX_CATALOGUE_IMAGE_SIZE = 5 * 1024 * 1024;
+const CATALOGUE_IMAGE_EXTENSIONS = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp'
+};
 const supabase = SUPABASE_CONFIGURED
   ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
@@ -187,6 +194,8 @@ function resetCatalogueForm() {
   document.getElementById('catalogueItemId').value = '';
   document.getElementById('catalogueOrder').value = '0';
   document.getElementById('catalogueActive').checked = true;
+  document.getElementById('catalogueImagePreview').replaceChildren();
+  document.getElementById('catalogueImagePreview').hidden = true;
   document.getElementById('saveCatalogueItem').textContent = 'Add catalogue item';
   document.getElementById('cancelCatalogueEdit').hidden = true;
 }
@@ -199,6 +208,17 @@ function editCatalogueItem(item) {
   document.getElementById('catalogueDescription').value = item.description;
   document.getElementById('catalogueOrder').value = String(item.sort_order);
   document.getElementById('catalogueActive').checked = item.is_active;
+  const preview = document.getElementById('catalogueImagePreview');
+  preview.replaceChildren();
+  if (item.image_path) {
+    const image = document.createElement('img');
+    image.src = supabase.storage.from(CATALOGUE_IMAGE_BUCKET).getPublicUrl(item.image_path).data.publicUrl;
+    image.alt = `${item.name} catalogue photo`;
+    preview.append(image);
+    preview.hidden = false;
+  } else {
+    preview.hidden = true;
+  }
   document.getElementById('saveCatalogueItem').textContent = 'Save changes';
   document.getElementById('cancelCatalogueEdit').hidden = false;
   document.getElementById('catalogueForm').scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -208,7 +228,7 @@ async function showCatalogueItems() {
   const target = document.getElementById('catalogueAdminList');
   const { data: items, error } = await supabase
     .from('catalogue_items')
-    .select('id, name, category, description, price, is_active, sort_order')
+    .select('id, name, category, description, price, is_active, sort_order, image_path')
     .order('sort_order', { ascending: true })
     .order('name', { ascending: true });
   if (error) {
@@ -228,6 +248,13 @@ async function showCatalogueItems() {
   items.forEach(item => {
     const row = document.createElement('article');
     row.className = 'admin-list-item';
+    if (item.image_path) {
+      const image = document.createElement('img');
+      image.className = 'admin-catalogue-image';
+      image.src = supabase.storage.from(CATALOGUE_IMAGE_BUCKET).getPublicUrl(item.image_path).data.publicUrl;
+      image.alt = `${item.name} catalogue photo`;
+      row.append(image);
+    }
     const details = document.createElement('div');
     const heading = document.createElement('h3');
     heading.textContent = item.name;
@@ -263,22 +290,36 @@ async function deleteCatalogueItem(item) {
     console.error('Unable to delete catalogue item:', error);
     return;
   }
+  if (item.image_path) {
+    const { error: imageError } = await supabase.storage.from(CATALOGUE_IMAGE_BUCKET).remove([item.image_path]);
+    if (imageError) {
+      dashboardMessage.textContent = 'Catalogue item deleted, but its photo could not be removed from storage.';
+      console.error('Unable to delete catalogue image:', imageError);
+      await showCatalogueItems();
+      return;
+    }
+  }
   dashboardMessage.textContent = 'Catalogue item deleted.';
   await showCatalogueItems();
 }
 
 async function showServiceRequests() {
   const target = document.getElementById('adminRequests');
+  const summary = document.getElementById('requestSummary');
+  summary.textContent = 'Loading customer requests from Supabase...';
   const { data: requests, error } = await supabase
     .from('service_requests')
     .select('id, contact_name, phone, items, estimated_total, customization, call_requested, status, created_at')
     .order('created_at', { ascending: false });
   if (error) {
     target.textContent = 'Customer requests could not be loaded.';
+    summary.textContent = 'Requests could not be loaded. Use Refresh requests to try again.';
     console.error('Unable to load customer requests:', error);
     return;
   }
   target.replaceChildren();
+  const newRequests = requests.filter(request => request.status === 'new').length;
+  summary.textContent = `${requests.length} ${requests.length === 1 ? 'request' : 'requests'} · ${newRequests} new`;
   if (!requests.length) {
     const empty = document.createElement('p');
     empty.className = 'empty-state';
@@ -296,12 +337,16 @@ async function showServiceRequests() {
     heading.textContent = request.contact_name;
     const metadata = document.createElement('p');
     metadata.className = 'item-meta';
-    metadata.textContent = `${request.phone} · ${new Date(request.created_at).toLocaleString()}${request.call_requested ? ' · Requested a call' : ''}`;
+    metadata.textContent = `Request #${request.id.slice(0, 8).toUpperCase()} · ${new Date(request.created_at).toLocaleString()}${request.call_requested ? ' · Requested a call' : ''}`;
+    const phone = document.createElement('a');
+    phone.className = 'admin-request-phone';
+    phone.href = `tel:${request.phone.replace(/[^\d+]/g, '')}`;
+    phone.textContent = request.phone;
     const items = document.createElement('p');
     items.textContent = request.items.map(item => `${item.name} × ${item.quantity}`).join(' · ');
     const total = document.createElement('p');
     total.textContent = `Estimated total: R${Number(request.estimated_total).toFixed(2)}`;
-    details.append(heading, metadata, items, total);
+    details.append(heading, metadata, phone, items, total);
     if (request.customization) {
       const note = document.createElement('p');
       note.textContent = `Note: ${request.customization}`;
@@ -326,6 +371,8 @@ async function showServiceRequests() {
   });
 }
 
+document.getElementById('refreshRequests').addEventListener('click', showServiceRequests);
+
 async function updateRequestStatus(id, status) {
   dashboardMessage.textContent = 'Saving request status...';
   const { error } = await supabase.from('service_requests').update({ status }).eq('id', id);
@@ -336,6 +383,7 @@ async function updateRequestStatus(id, status) {
     return;
   }
   dashboardMessage.textContent = 'Request status updated.';
+  await showServiceRequests();
 }
 
 async function showScheduleBlocks() {
@@ -413,26 +461,85 @@ document.getElementById('scheduleForm').addEventListener('submit', async event =
 
 document.getElementById('catalogueForm').addEventListener('submit', async event => {
   event.preventDefault();
-  const id = document.getElementById('catalogueItemId').value;
+  const existingId = document.getElementById('catalogueItemId').value;
+  const id = existingId || crypto.randomUUID();
+  const selectedImage = document.getElementById('catalogueImage').files[0];
+  if (selectedImage && (!Object.hasOwn(CATALOGUE_IMAGE_EXTENSIONS, selectedImage.type) || selectedImage.size > MAX_CATALOGUE_IMAGE_SIZE)) {
+    dashboardMessage.textContent = 'Choose a JPEG, PNG or WebP photo no larger than 5 MB.';
+    return;
+  }
+  const saveButton = document.getElementById('saveCatalogueItem');
+  saveButton.disabled = true;
+  dashboardMessage.textContent = selectedImage ? 'Uploading catalogue photo...' : 'Saving catalogue item...';
+  let uploadedImagePath = '';
+  if (selectedImage) {
+    uploadedImagePath = `${id}/${crypto.randomUUID()}.${CATALOGUE_IMAGE_EXTENSIONS[selectedImage.type]}`;
+    const { error: uploadError } = await supabase.storage
+      .from(CATALOGUE_IMAGE_BUCKET)
+      .upload(uploadedImagePath, selectedImage, { contentType: selectedImage.type, upsert: false });
+    if (uploadError) {
+      dashboardMessage.textContent = 'The catalogue photo could not be uploaded. The item was not saved.';
+      console.error('Unable to upload catalogue image:', uploadError);
+      saveButton.disabled = false;
+      return;
+    }
+  }
   const item = {
     name: document.getElementById('catalogueName').value.trim(),
     category: document.getElementById('catalogueCategory').value.trim(),
     description: document.getElementById('catalogueDescription').value.trim(),
     price: Number(document.getElementById('cataloguePrice').value),
     sort_order: Number(document.getElementById('catalogueOrder').value),
-    is_active: document.getElementById('catalogueActive').checked
+    is_active: document.getElementById('catalogueActive').checked,
+    ...(uploadedImagePath ? { image_path: uploadedImagePath } : {})
   };
-  const { error } = id
+  const { data: previousItem, error: previousItemError } = existingId
+    ? await supabase.from('catalogue_items').select('image_path').eq('id', id).single()
+    : { data: null, error: null };
+  if (previousItemError) {
+    dashboardMessage.textContent = 'The catalogue item could not be loaded before saving.';
+    console.error('Unable to load previous catalogue image:', previousItemError);
+    saveButton.disabled = false;
+    if (uploadedImagePath) {
+      const { error: cleanupError } = await supabase.storage.from(CATALOGUE_IMAGE_BUCKET).remove([uploadedImagePath]);
+      if (cleanupError) {
+        dashboardMessage.textContent = 'The previous catalogue image could not be loaded, and the uploaded photo could not be cleaned up.';
+        console.error('Unable to clean up uploaded catalogue image:', cleanupError);
+      }
+    }
+    return;
+  }
+  if (!existingId) item.id = id;
+  const { error } = existingId
     ? await supabase.from('catalogue_items').update(item).eq('id', id)
     : await supabase.from('catalogue_items').insert(item);
   if (error) {
     dashboardMessage.textContent = 'The catalogue item could not be saved.';
     console.error('Unable to save catalogue item:', error);
+    saveButton.disabled = false;
+    if (uploadedImagePath) {
+      const { error: cleanupError } = await supabase.storage.from(CATALOGUE_IMAGE_BUCKET).remove([uploadedImagePath]);
+      if (cleanupError) {
+        dashboardMessage.textContent = 'The catalogue item could not be saved, and the uploaded photo could not be cleaned up.';
+        console.error('Unable to clean up uploaded catalogue image:', cleanupError);
+      }
+    }
     return;
   }
-  dashboardMessage.textContent = id ? 'Catalogue item updated.' : 'Catalogue item added.';
+  let imageCleanupWarning = false;
+  if (uploadedImagePath && previousItem?.image_path) {
+    const { error: oldImageError } = await supabase.storage.from(CATALOGUE_IMAGE_BUCKET).remove([previousItem.image_path]);
+    if (oldImageError) {
+      imageCleanupWarning = true;
+      console.error('Unable to remove previous catalogue image:', oldImageError);
+    }
+  }
+  dashboardMessage.textContent = imageCleanupWarning
+    ? 'Catalogue item saved, but its previous photo could not be removed from storage.'
+    : existingId ? 'Catalogue item updated.' : 'Catalogue item added.';
   resetCatalogueForm();
   await showCatalogueItems();
+  saveButton.disabled = false;
 });
 
 document.getElementById('cancelCatalogueEdit').addEventListener('click', resetCatalogueForm);
