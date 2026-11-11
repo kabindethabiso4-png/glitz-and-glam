@@ -15,6 +15,8 @@ const signInForm = document.getElementById('signInForm');
 const signUpForm = document.getElementById('signUpForm');
 const resetForm = document.getElementById('resetForm');
 const requestForm = document.getElementById('requestForm');
+const newPasswordForm = document.getElementById('newPasswordForm');
+
 let activeUser = null;
 startAnalyticsPageTracking();
 document.getElementById('year').textContent = new Date().getFullYear();
@@ -35,17 +37,26 @@ function setupPasswordExperience(passwordId, confirmationId, visibilityId, stren
   const visibility = document.getElementById(visibilityId);
   const strength = document.getElementById(strengthId);
   const match = document.getElementById(matchId);
+
+  if (!password || !confirmation || !visibility || !strength || !match) return;
+
   function updateStrength() {
     const value = password.value;
     const checks = getPasswordSafetyChecks(value);
     let passed = 0;
     Object.entries(checks).forEach(([name, satisfied]) => {
       const item = strength.querySelector(`[data-password-check="${name}"]`);
-      item.classList.toggle('is-satisfied', satisfied);
-      item.querySelector('input').checked = satisfied;
+      if (item) {
+        item.classList.toggle('is-satisfied', satisfied);
+        const checkbox = item.querySelector('input');
+        if (checkbox) checkbox.checked = satisfied;
+      }
       passed += Number(satisfied);
     });
-    strength.querySelector('[data-strength-count]').textContent = `${passed} of 5 safety checks passed`;
+    const countDisplay = strength.querySelector('[data-strength-count]');
+    if (countDisplay) {
+      countDisplay.textContent = `${passed} of 5 safety checks passed`;
+    }
   }
 
   function updateMatch() {
@@ -117,6 +128,7 @@ function formatPrice(price) {
 
 async function loadRequestSelection() {
   const target = document.getElementById('requestSelection');
+  if (!target) return [];
   target.replaceChildren();
   let cart;
   try {
@@ -139,6 +151,7 @@ async function loadRequestSelection() {
     .select('id, name, price')
     .in('id', cart.map(item => item.id))
     .eq('is_active', true);
+
   if (error) {
     target.textContent = 'Your selection could not be checked. Please try again later.';
     accountMessage.textContent = 'The current catalogue could not be loaded.';
@@ -196,6 +209,7 @@ async function loadRequestSelection() {
 
 function renderHistory(requests) {
   const target = document.getElementById('requestHistory');
+  if (!target) return;
   target.replaceChildren();
   if (!requests.length) {
     const empty = document.createElement('p');
@@ -249,6 +263,7 @@ async function loadAccount(user) {
   renderHistory(requests);
 }
 
+// Event Listeners for Authentication Nav toggles
 document.getElementById('showSignIn').addEventListener('click', () => showAuthForm(signInForm));
 document.getElementById('showSignUp').addEventListener('click', () => showAuthForm(signUpForm));
 document.getElementById('showReset').addEventListener('click', () => showAuthForm(resetForm));
@@ -398,187 +413,105 @@ document.getElementById('signOutButton').addEventListener('click', async () => {
   authMessage.textContent = 'You have been signed out.';
 });
 
-document.getElementById('newPasswordForm').addEventListener('submit', async event => {
-  event.preventDefault();
-  const password = document.getElementById('newPassword').value;
-  const confirmation = document.getElementById('confirmPassword').value;
-  if (Object.values(getPasswordSafetyChecks(password)).some(passed => !passed)) {
-    accountMessage.textContent = 'Please complete all 5 password safety checks before updating your password.';
-    document.getElementById('newPassword').focus();
-    return;
-  }
-  if (password !== confirmation) {
-    accountMessage.textContent = 'The passwords do not match.';
-    document.getElementById('confirmPassword').focus();
-    return;
-  }
-  const form = event.currentTarget;
-  setBusy(form, true);
-  accountMessage.textContent = 'Updating your password...';
-  const { error } = await supabase.auth.updateUser({ password });
-  setBusy(form, false);
-  if (error) {
-    accountMessage.textContent = 'Your password could not be updated. Please request a new reset link.';
-    console.error('Unable to update customer password:', error);
-    return;
-  }
-  form.reset();
-  form.hidden = true;
-  accountMessage.textContent = 'Your password has been updated.';
-});
+// Update Password Form Handler
+if (newPasswordForm) {
+  newPasswordForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    const password = document.getElementById('newPassword').value;
+    const confirmation = document.getElementById('confirmPassword').value;
 
+    if (Object.values(getPasswordSafetyChecks(password)).some(passed => !passed)) {
+      accountMessage.textContent = 'Please complete all 5 password safety checks before updating your password.';
+      document.getElementById('newPassword').focus();
+      return;
+    }
+    if (password !== confirmation) {
+      accountMessage.textContent = 'The passwords do not match.';
+      document.getElementById('confirmPassword').focus();
+      return;
+    }
+
+    setBusy(newPasswordForm, true);
+    accountMessage.textContent = 'Updating your password...';
+
+    const { error } = await supabase.auth.updateUser({ password });
+    setBusy(newPasswordForm, false);
+
+    if (error) {
+      accountMessage.textContent = `Your password could not be updated: ${error.message}`;
+      console.error('Unable to update customer password:', error);
+      return;
+    }
+
+    newPasswordForm.reset();
+    newPasswordForm.hidden = true;
+    accountMessage.textContent = 'Your password has been successfully updated! Redirecting...';
+
+    setTimeout(() => {
+      window.location.href = '/account.html';
+    }, 2000);
+  });
+}
+
+// Initialization and Recovery Link Token Handler
 if (!supabase) {
   authMessage.textContent = 'Account services are not configured yet. Please contact the studio directly.';
 } else {
+  // Handle automatic token extraction and session setup on page load (Password Recovery)
+  window.addEventListener('DOMContentLoaded', async () => {
+    const hash = window.location.hash.substring(1);
+    const params = new URLSearchParams(hash);
+
+    const access_token = params.get('access_token');
+    const refresh_token = params.get('refresh_token');
+    const type = params.get('type');
+
+    if (type === 'recovery' && access_token && refresh_token) {
+      try {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token,
+          refresh_token,
+        });
+
+        if (sessionError) throw sessionError;
+
+        // Clean tokens from the URL bar
+        window.history.replaceState(null, '', window.location.pathname);
+
+        authPanel.hidden = true;
+        accountPanel.hidden = false;
+        if (newPasswordForm) newPasswordForm.hidden = false;
+        accountMessage.textContent = 'Recovery session verified! Please enter your new password below.';
+        return;
+      } catch (err) {
+        console.error('Error setting recovery session:', err.message);
+        accountMessage.textContent = 'Invalid or expired recovery link. Please request a new one.';
+      }
+    }
+
+    // Standard session check
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (error) {
+        authMessage.textContent = 'Your sign-in session could not be checked. Please sign in again.';
+        console.error('Unable to check customer session:', error);
+        return;
+      }
+      if (data.session) {
+        loadAccount(data.session.user);
+      } else {
+        showAuthForm(signInForm);
+      }
+    });
+  });
+
   supabase.auth.onAuthStateChange((event, session) => {
     if (event === 'PASSWORD_RECOVERY' && session) {
       activeUser = session.user;
       authPanel.hidden = true;
       accountPanel.hidden = false;
       document.getElementById('accountEmail').textContent = session.user.email || 'Signed in';
-      document.getElementById('newPasswordForm').hidden = false;
+      if (newPasswordForm) newPasswordForm.hidden = false;
       accountMessage.textContent = 'Choose a new password for your account.';
     }
   });
-  supabase.auth.getSession().then(({ data, error }) => {
-    if (error) {
-      authMessage.textContent = 'Your sign-in session could not be checked. Please sign in again.';
-      console.error('Unable to check customer session:', error);
-      return;
-    }
-    if (data.session) loadAccount(data.session.user);
-    else showAuthForm(signInForm);
-  });
-
-// ==========================================
-// SUPABASE PASSWORD RECOVERY & UPDATE HANDLER
-// ==========================================
-
-// 1. Handle automatic token extraction and session setup on page load
-window.addEventListener("DOMContentLoaded", async () => {
-  const hash = window.location.hash.substring(1);
-  const params = new URLSearchParams(hash);
-
-  const access_token = params.get("access_token");
-  const refresh_token = params.get("refresh_token");
-  const type = params.get("type");
-
-  // Check if we arrived here via a Supabase recovery link
-  if (type === "recovery" && access_token && refresh_token) {
-    if (!supabase) {
-      console.error("Supabase client is not initialized.");
-      return;
-    }
-
-    try {
-      // Establish the session using the recovery tokens from the URL
-      const { error: sessionError } = await supabase.auth.setSession({
-        access_token,
-        refresh_token,
-      });
-
-      if (sessionError) throw sessionError;
-
-      // Clean the tokens out of the URL bar for security and cleanliness
-      window.history.replaceState(null, "", window.location.pathname);
-      
-      // If you have an account message element, notify the user they can enter a new password
-      const accountMessage = document.getElementById("accountMessage");
-      if (accountMessage) {
-        accountMessage.textContent = "Session verified! Please enter your new password below.";
-      }
-    } catch (err) {
-      console.error("Error setting recovery session:", err.message);
-      const accountMessage = document.getElementById("accountMessage");
-      if (accountMessage) {
-        accountMessage.textContent = "Invalid or expired recovery link. Please request a new one.";
-      }
-    }
-  }
-});
-
-// 2. Handle the New Password Form Submission
-const newPasswordForm = document.getElementById("newPasswordForm");
-
-if (newPasswordForm) {
-  newPasswordForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-
-    if (!supabase) {
-      const accountMessage = document.getElementById("accountMessage");
-      if (accountMessage) {
-        accountMessage.textContent = "Account services are not configured. Please contact the studio directly.";
-      }
-      return;
-    }
-
-    const passwordInput = document.getElementById("newPassword");
-    const confirmInput = document.getElementById("confirmPassword");
-    const accountMessage = document.getElementById("accountMessage");
-
-    const password = passwordInput ? passwordInput.value : "";
-    const confirmation = confirmInput ? confirmInput.value : "";
-
-    // Run your existing safety checks if available
-    if (typeof getPasswordSafetyChecks === "function") {
-      const checks = getPasswordSafetyChecks(password);
-      const passedAllChecks = Object.values(checks).every(Boolean);
-
-      if (!passedAllChecks) {
-        if (accountMessage) {
-          accountMessage.textContent = "Please complete all 5 password safety checks before updating.";
-        }
-        if (passwordInput) passwordInput.focus();
-        return;
-      }
-    }
-
-    if (password !== confirmation) {
-      if (accountMessage) {
-        accountMessage.textContent = "The passwords do not match.";
-      }
-      if (confirmInput) confirmInput.focus();
-      return;
-    }
-
-    if (typeof setBusy === "function") setBusy(newPasswordForm, true);
-    if (accountMessage) accountMessage.textContent = "Updating your password...";
-
-    try {
-      // Update the user's password in Supabase
-      const { data, error: updateError } = await supabase.auth.updateUser({
-        password: password,
-      });
-
-      if (updateError) throw updateError;
-
-      if (accountMessage) {
-        accountMessage.textContent = "Your password has been successfully updated! Redirecting to sign in...";
-      }
-      
-      newPasswordForm.reset();
-
-      // Redirect back to account/login page after a short delay
-      setTimeout(() => {
-        window.location.href = "/account.html";
-      }, 2000);
-
-    } catch (err) {
-      console.error("Password update error:", err);
-      if (accountMessage) {
-        accountMessage.textContent = `Password update failed: ${err.message}`;
-      }
-    } finally {
-      if (typeof setBusy === "function") setBusy(newPasswordForm, false);
-    }
-  });
-}
-
-
-
-
-
-
-
-
 }
