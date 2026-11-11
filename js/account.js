@@ -481,6 +481,7 @@ if (!supabase) {
         authPanel.hidden = true;
         accountPanel.hidden = false;
         if (newPasswordForm) newPasswordForm.hidden = false;
+document.getElementById('request').hidden=true
         accountMessage.textContent = 'Recovery session verified! Please enter your new password below.';
         return;
       } catch (err) {
