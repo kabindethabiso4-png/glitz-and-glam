@@ -449,4 +449,136 @@ if (!supabase) {
     if (data.session) loadAccount(data.session.user);
     else showAuthForm(signInForm);
   });
+
+// ==========================================
+// SUPABASE PASSWORD RECOVERY & UPDATE HANDLER
+// ==========================================
+
+// 1. Handle automatic token extraction and session setup on page load
+window.addEventListener("DOMContentLoaded", async () => {
+  const hash = window.location.hash.substring(1);
+  const params = new URLSearchParams(hash);
+
+  const access_token = params.get("access_token");
+  const refresh_token = params.get("refresh_token");
+  const type = params.get("type");
+
+  // Check if we arrived here via a Supabase recovery link
+  if (type === "recovery" && access_token && refresh_token) {
+    if (!supabase) {
+      console.error("Supabase client is not initialized.");
+      return;
+    }
+
+    try {
+      // Establish the session using the recovery tokens from the URL
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token,
+        refresh_token,
+      });
+
+      if (sessionError) throw sessionError;
+
+      // Clean the tokens out of the URL bar for security and cleanliness
+      window.history.replaceState(null, "", window.location.pathname);
+      
+      // If you have an account message element, notify the user they can enter a new password
+      const accountMessage = document.getElementById("accountMessage");
+      if (accountMessage) {
+        accountMessage.textContent = "Session verified! Please enter your new password below.";
+      }
+    } catch (err) {
+      console.error("Error setting recovery session:", err.message);
+      const accountMessage = document.getElementById("accountMessage");
+      if (accountMessage) {
+        accountMessage.textContent = "Invalid or expired recovery link. Please request a new one.";
+      }
+    }
+  }
+});
+
+// 2. Handle the New Password Form Submission
+const newPasswordForm = document.getElementById("newPasswordForm");
+
+if (newPasswordForm) {
+  newPasswordForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    if (!supabase) {
+      const accountMessage = document.getElementById("accountMessage");
+      if (accountMessage) {
+        accountMessage.textContent = "Account services are not configured. Please contact the studio directly.";
+      }
+      return;
+    }
+
+    const passwordInput = document.getElementById("newPassword");
+    const confirmInput = document.getElementById("confirmPassword");
+    const accountMessage = document.getElementById("accountMessage");
+
+    const password = passwordInput ? passwordInput.value : "";
+    const confirmation = confirmInput ? confirmInput.value : "";
+
+    // Run your existing safety checks if available
+    if (typeof getPasswordSafetyChecks === "function") {
+      const checks = getPasswordSafetyChecks(password);
+      const passedAllChecks = Object.values(checks).every(Boolean);
+
+      if (!passedAllChecks) {
+        if (accountMessage) {
+          accountMessage.textContent = "Please complete all 5 password safety checks before updating.";
+        }
+        if (passwordInput) passwordInput.focus();
+        return;
+      }
+    }
+
+    if (password !== confirmation) {
+      if (accountMessage) {
+        accountMessage.textContent = "The passwords do not match.";
+      }
+      if (confirmInput) confirmInput.focus();
+      return;
+    }
+
+    if (typeof setBusy === "function") setBusy(newPasswordForm, true);
+    if (accountMessage) accountMessage.textContent = "Updating your password...";
+
+    try {
+      // Update the user's password in Supabase
+      const { data, error: updateError } = await supabase.auth.updateUser({
+        password: password,
+      });
+
+      if (updateError) throw updateError;
+
+      if (accountMessage) {
+        accountMessage.textContent = "Your password has been successfully updated! Redirecting to sign in...";
+      }
+      
+      newPasswordForm.reset();
+
+      // Redirect back to account/login page after a short delay
+      setTimeout(() => {
+        window.location.href = "/account.html";
+      }, 2000);
+
+    } catch (err) {
+      console.error("Password update error:", err);
+      if (accountMessage) {
+        accountMessage.textContent = `Password update failed: ${err.message}`;
+      }
+    } finally {
+      if (typeof setBusy === "function") setBusy(newPasswordForm, false);
+    }
+  });
+}
+
+
+
+
+
+
+
+
 }
